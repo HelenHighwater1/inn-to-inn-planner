@@ -5,8 +5,10 @@ import {
   MapMouseEvent,
   Marker,
   Popup,
+  setWorkerUrl,
   type LngLatBoundsLike,
 } from 'maplibre-gl';
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   accommodationNear,
@@ -23,6 +25,10 @@ import { deriveDays, deriveSegments } from '../lib/itinerary';
 import { usePlanner } from '../store';
 import { AMBER, COPPER, COPPER_TEXT, dayColor, PAPER, PIN_FILL, SKIPPED } from '../lib/colors';
 import { MAP_STYLE } from '../lib/mapStyle';
+
+// The bundled entry doesn't sit next to maplibre-gl-worker.mjs, so the
+// default sibling-path lookup 404s in production builds.
+setWorkerUrl(maplibreWorkerUrl);
 
 /** Amber diamond image for food POIs (circles can't do diamonds). */
 function makeDiamond(): ImageData {
