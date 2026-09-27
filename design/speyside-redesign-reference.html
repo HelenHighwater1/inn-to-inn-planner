@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Speyside Way — Inn-to-Inn Planner</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:#1F2A24;background:#F5F1E8}
+a{color:#2E4B3C}a:hover{color:#1F2A24}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid #C47F1E;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #F5F1E8; overflow: hidden">
+
+<header style="height: 72px; box-sizing: border-box; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; background: #FBF9F4; border-bottom: 1px solid #E2DCCD">
+<div style="display: flex; align-items: center; gap: 14px">
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true"><circle cx="18" cy="18" r="17" fill="#2E4B3C"></circle><path d="M6 25 L13 15 L17 20 L22 12 L30 25 Z" fill="#FBF9F4"></path><path d="M8 28 C13 26 17 29 22 27 C25 26 27 27 29 27" stroke="#C47F1E" stroke-width="1.8" stroke-linecap="round"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 1px">
+<div style="font-family: Newsreader, Georgia, serif; font-size: 23px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.1">Speyside Way</div>
+<div style="font-size: 12.5px; color: #5B6660; letter-spacing: 0.02em">Inn-to-inn planner · Buckie to Newtonmore</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="display: flex; padding: 3px; gap: 2px; background: #EFEADD; border-radius: 10px" role="group" aria-label="Units">
+<button onClick="{{setImperial}}" aria-pressed="{{units.impPressed}}" style="{{units.impStyle}}">mi · ft</button>
+<button onClick="{{setMetric}}" aria-pressed="{{units.metPressed}}" style="{{units.metStyle}}">km · m</button>
+</div>
+<button onClick="{{reset}}" style="height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid #D8D0BD; background: #FFFFFF; border-radius: 10px; font-size: 13.5px; font-weight: 500; color: #1F2A24; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+Reset route
+</button>
+</div>
+</header>
+
+<div style="display: flex; height: 828px">
+
+<section aria-label="Route map" style="position: relative; width: 960px; height: 828px; overflow: hidden; background: #ECE7D8">
+<svg width="960" height="828" viewBox="0 0 960 828" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect width="960" height="828" fill="#ECE7D8"></rect>
+<path d="M720,150 C745,138 790,145 792,170 C794,195 762,205 738,198 C718,192 708,165 720,150 Z" fill="#DDE3CE"></path>
+<path d="M540,360 C575,345 615,355 612,385 C610,410 575,420 548,410 C528,402 522,375 540,360 Z" fill="#DDE3CE"></path>
+<path d="M300,520 C340,500 420,510 430,540 C440,575 400,600 360,605 C320,610 290,590 285,565 C282,545 285,530 300,520 Z" fill="#DDE3CE"></path>
+<path d="M190,650 C230,630 300,640 305,675 C310,710 270,730 230,728 C195,726 170,700 175,675 C177,662 182,655 190,650 Z" fill="#DDE3CE"></path>
+<g fill="none" stroke="#CFC5AC" stroke-width="1">
+<ellipse cx="540" cy="730" rx="210" ry="96" transform="rotate(-18 540 730)"></ellipse>
+<ellipse cx="545" cy="735" rx="158" ry="72" transform="rotate(-18 545 735)"></ellipse>
+<ellipse cx="552" cy="740" rx="110" ry="50" transform="rotate(-18 552 740)"></ellipse>
+<ellipse cx="558" cy="744" rx="66" ry="29" transform="rotate(-18 558 744)"></ellipse>
+<ellipse cx="562" cy="746" rx="26" ry="11" transform="rotate(-18 562 746)"></ellipse>
+<ellipse cx="800" cy="400" rx="64" ry="34" transform="rotate(12 800 400)"></ellipse>
+<ellipse cx="802" cy="401" rx="40" ry="20" transform="rotate(12 802 401)"></ellipse>
+<ellipse cx="804" cy="402" rx="17" ry="8" transform="rotate(12 804 402)"></ellipse>
+</g>
+<path d="M58,288 C110,250 170,210 250,175 C330,142 400,125 470,112 C540,100 600,92 650,98 C720,108 790,150 880,210" fill="none" stroke="#DDD2B8" stroke-width="3"></path>
+<path d="M58,288 C90,380 130,450 170,520 C200,580 215,640 200,700 C188,745 150,790 118,828" fill="none" stroke="#DDD2B8" stroke-width="3"></path>
+<path d="M0,0 H960 V30 C900,40 870,52 850,48 C820,44 800,58 770,52 C720,44 680,30 640,34 C580,40 520,60 470,80 C420,100 380,110 330,120 C280,130 240,150 200,170 C150,195 100,230 60,270 C40,290 20,300 0,310 Z" fill="#C9D8D6" stroke="#AFC4C2" stroke-width="1.2"></path>
+<path d="M772,48 C768,90 775,120 762,150 C750,185 760,215 738,245 C722,268 705,290 684,310 C660,330 630,340 600,358 C570,378 545,400 515,418 C490,432 470,452 452,472 C430,500 410,520 385,545 C365,565 340,585 318,612 C295,640 275,670 250,698 C225,725 195,748 165,765 C140,778 110,790 70,812" fill="none" stroke="#9DBAC0" stroke-width="2.4" stroke-linecap="round"></path>
+<ellipse cx="205" cy="738" rx="15" ry="7" transform="rotate(-30 205 738)" fill="#C9D8D6"></ellipse>
+<ellipse cx="372" cy="660" rx="12" ry="6" fill="#C9D8D6"></ellipse>
+<text x="300" y="62" style="font: italic 400 17px Newsreader, Georgia, serif; letter-spacing: 0.12em" fill="#5F8583">Moray Firth</text>
+<g style="font: 500 12px 'Instrument Sans', system-ui, sans-serif; letter-spacing: 0.04em" fill="#7B7F72">
+<text x="64" y="308">INVERNESS</text>
+<text x="262" y="180">NAIRN</text>
+<text x="420" y="146">FORRES</text>
+<text x="610" y="108">ELGIN</text>
+<text x="862" y="226">KEITH</text>
+<text x="772" y="338">DUFFTOWN</text>
+</g>
+<text x="590" y="790" style="font: italic 400 16px Newsreader, Georgia, serif; letter-spacing: 0.14em" fill="#8C8470">Cairngorms</text>
+<text x="770" y="448" style="font: italic 400 13px Newsreader, Georgia, serif; letter-spacing: 0.08em" fill="#8C8470">Ben Rinnes</text>
+
+<g opacity="{{lay.townsOp}}" fill="#FBF9F4" stroke="#4A564F" stroke-width="1.6">
+<circle cx="808" cy="72" r="3.5"></circle><circle cx="790" cy="100" r="3.5"></circle><circle cx="755" cy="182" r="3.5"></circle><circle cx="735" cy="240" r="3.5"></circle><circle cx="655" cy="318" r="3.5"></circle><circle cx="612" cy="346" r="3.5"></circle><circle cx="520" cy="410" r="3.5"></circle><circle cx="470" cy="452" r="3.5"></circle><circle cx="395" cy="535" r="3.5"></circle><circle cx="330" cy="592" r="3.5"></circle><circle cx="272" cy="665" r="3.5"></circle><circle cx="212" cy="728" r="3.5"></circle><circle cx="140" cy="768" r="3.5"></circle>
+</g>
+<g opacity="{{lay.foodOp}}" fill="#C47F1E" stroke="#FBF9F4" stroke-width="1.5">
+<rect x="841" y="67" width="8" height="8" rx="1.5" transform="rotate(45 845 71)"></rect><rect x="764" y="73" width="8" height="8" rx="1.5" transform="rotate(45 768 77)"></rect><rect x="696" y="288" width="8" height="8" rx="1.5" transform="rotate(45 700 292)"></rect><rect x="682" y="310" width="8" height="8" rx="1.5" transform="rotate(45 686 314)"></rect><rect x="440" y="480" width="8" height="8" rx="1.5" transform="rotate(45 444 484)"></rect><rect x="356" y="572" width="8" height="8" rx="1.5" transform="rotate(45 360 576)"></rect><rect x="310" y="630" width="8" height="8" rx="1.5" transform="rotate(45 314 634)"></rect><rect x="161" y="764" width="8" height="8" rx="1.5" transform="rotate(45 165 768)"></rect>
+</g>
+<g opacity="{{lay.lodgingOp}}" fill="#6E4A7E" stroke="#FBF9F4" stroke-width="1.6">
+<circle cx="855" cy="48" r="4.5"></circle><circle cx="782" cy="54" r="4.5"></circle><circle cx="776" cy="126" r="4.5"></circle><circle cx="720" cy="268" r="4.5"></circle><circle cx="694" cy="290" r="4.5"></circle><circle cx="668" cy="314" r="4.5"></circle><circle cx="596" cy="360" r="4.5"></circle><circle cx="562" cy="392" r="4.5"></circle><circle cx="456" cy="458" r="4.5"></circle><circle cx="430" cy="482" r="4.5"></circle><circle cx="364" cy="552" r="4.5"></circle><circle cx="340" cy="574" r="4.5"></circle><circle cx="314" cy="616" r="4.5"></circle><circle cx="290" cy="638" r="4.5"></circle><circle cx="252" cy="694" r="4.5"></circle><circle cx="250" cy="716" r="4.5"></circle><circle cx="172" cy="748" r="4.5"></circle><circle cx="130" cy="766" r="4.5"></circle>
+</g>
+
+<g fill="none" stroke="#FBF9F4" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+<path d="M847,60 C825,70 800,58 770,65"></path>
+<path d="M770,65 C760,90 772,110 763,136"></path>
+<path d="M763,136 C745,170 770,200 745,225 C725,245 720,262 706,280"></path>
+<path d="M706,280 C698,290 690,294 683,302"></path>
+<path d="M683,302 C660,300 650,318 630,322 C612,326 605,300 590,318 C585,340 590,355 582,370"></path>
+<path d="M582,370 C560,395 540,405 520,400 C500,398 495,430 475,440 C462,448 455,455 444,470"></path>
+<path d="M444,470 C430,500 420,520 400,540 C385,550 370,545 351,562"></path>
+<path d="M351,562 C340,585 315,600 302,626"></path>
+<path d="M302,626 C290,650 262,670 250,690 C246,697 243,700 240,704"></path>
+<path d="M240,704 C230,730 215,735 200,745 C185,752 175,745 160,758"></path>
+<path d="M160,758 C145,768 132,770 120,775"></path>
+</g>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M847,60 C825,70 800,58 770,65" stroke="{{segs.s1.c}}" stroke-width="{{segs.s1.w}}"></path>
+<path d="M770,65 C760,90 772,110 763,136" stroke="{{segs.s2.c}}" stroke-width="{{segs.s2.w}}"></path>
+<path d="M763,136 C745,170 770,200 745,225 C725,245 720,262 706,280" stroke="{{segs.s3.c}}" stroke-width="{{segs.s3.w}}"></path>
+<path d="M706,280 C698,290 690,294 683,302" stroke="{{segs.s4.c}}" stroke-width="{{segs.s4.w}}"></path>
+<path d="M683,302 C660,300 650,318 630,322 C612,326 605,300 590,318 C585,340 590,355 582,370" stroke="{{segs.s5.c}}" stroke-width="{{segs.s5.w}}"></path>
+<path d="M582,370 C560,395 540,405 520,400 C500,398 495,430 475,440 C462,448 455,455 444,470" stroke="{{segs.s6.c}}" stroke-width="{{segs.s6.w}}"></path>
+<path d="M444,470 C430,500 420,520 400,540 C385,550 370,545 351,562" stroke="{{segs.s7.c}}" stroke-width="{{segs.s7.w}}"></path>
+<path d="M351,562 C340,585 315,600 302,626" stroke="{{segs.s8.c}}" stroke-width="{{segs.s8.w}}"></path>
+<path d="M302,626 C290,650 262,670 250,690 C246,697 243,700 240,704" stroke="{{segs.s9.c}}" stroke-width="{{segs.s9.w}}"></path>
+<path d="M240,704 C230,730 215,735 200,745 C185,752 175,745 160,758" stroke="{{segs.s10.c}}" stroke-width="{{segs.s10.w}}"></path>
+<path d="M160,758 C145,768 132,770 120,775" stroke="{{segs.s11.c}}" stroke-width="{{segs.s11.w}}"></path>
+</g>
+
+<g style="font: 600 12.5px 'Instrument Sans', system-ui, sans-serif" text-anchor="middle">
+<circle cx="847" cy="60" r="{{pins.p1.r}}" fill="{{pins.p1.fill}}" stroke="{{pins.p1.stroke}}" stroke-width="2"></circle><text x="847" y="64.5" fill="{{pins.p1.text}}">1</text>
+<circle cx="770" cy="65" r="{{pins.p2.r}}" fill="{{pins.p2.fill}}" stroke="{{pins.p2.stroke}}" stroke-width="2"></circle><text x="770" y="69.5" fill="{{pins.p2.text}}">2</text>
+<circle cx="763" cy="136" r="{{pins.p3.r}}" fill="{{pins.p3.fill}}" stroke="{{pins.p3.stroke}}" stroke-width="2"></circle><text x="763" y="140.5" fill="{{pins.p3.text}}">3</text>
+<circle cx="706" cy="280" r="{{pins.p4.r}}" fill="{{pins.p4.fill}}" stroke="{{pins.p4.stroke}}" stroke-width="2"></circle><text x="706" y="284.5" fill="{{pins.p4.text}}">4</text>
+<circle cx="683" cy="302" r="{{pins.p5.r}}" fill="{{pins.p5.fill}}" stroke="{{pins.p5.stroke}}" stroke-width="2"></circle><text x="683" y="306.5" fill="{{pins.p5.text}}">5</text>
+<circle cx="582" cy="370" r="{{pins.p6.r}}" fill="{{pins.p6.fill}}" stroke="{{pins.p6.stroke}}" stroke-width="2"></circle><text x="582" y="374.5" fill="{{pins.p6.text}}">6</text>
+<circle cx="444" cy="470" r="{{pins.p7.r}}" fill="{{pins.p7.fill}}" stroke="{{pins.p7.stroke}}" stroke-width="2"></circle><text x="444" y="474.5" fill="{{pins.p7.text}}">7</text>
+<circle cx="351" cy="562" r="{{pins.p8.r}}" fill="{{pins.p8.fill}}" stroke="{{pins.p8.stroke}}" stroke-width="2"></circle><text x="351" y="566.5" fill="{{pins.p8.text}}">8</text>
+<circle cx="302" cy="626" r="{{pins.p9.r}}" fill="{{pins.p9.fill}}" stroke="{{pins.p9.stroke}}" stroke-width="2"></circle><text x="302" y="630.5" fill="{{pins.p9.text}}">9</text>
+<circle cx="240" cy="704" r="{{pins.p10.r}}" fill="{{pins.p10.fill}}" stroke="{{pins.p10.stroke}}" stroke-width="2"></circle><text x="240" y="708.5" fill="{{pins.p10.text}}">10</text>
+<circle cx="160" cy="758" r="{{pins.p11.r}}" fill="{{pins.p11.fill}}" stroke="{{pins.p11.stroke}}" stroke-width="2"></circle><text x="160" y="762.5" fill="{{pins.p11.text}}">11</text>
+<circle cx="120" cy="775" r="{{pins.p12.r}}" fill="{{pins.p12.fill}}" stroke="{{pins.p12.stroke}}" stroke-width="2"></circle><text x="120" y="779.5" fill="{{pins.p12.text}}">12</text>
+</g>
+
+<g style="font: 500 12px 'Instrument Sans', system-ui, sans-serif; paint-order: stroke; stroke: #F5F1E8; stroke-width: 4px; stroke-linejoin: round" fill="#1F2A24">
+<text x="866" y="80">Buckie</text>
+<text x="750" y="48" text-anchor="end">Spey Bay</text>
+<text x="782" y="140">Fochabers</text>
+<text x="726" y="276">Craigellachie</text>
+<text x="664" y="328" text-anchor="end">Aberlour</text>
+<text x="602" y="378">Ballindalloch</text>
+<text x="424" y="462" text-anchor="end">Grantown-on-Spey</text>
+<text x="370" y="566">Boat of Garten</text>
+<text x="320" y="630">Aviemore</text>
+<text x="258" y="708">Kincraig</text>
+<text x="170" y="740" text-anchor="middle">Kingussie</text>
+<text x="120" y="806" text-anchor="middle">Newtonmore</text>
+</g>
+</svg>
+
+<div style="position: absolute; left: 20px; top: 20px; display: flex; align-items: center; gap: 4px; padding: 5px; background: #FBF9F4; border-radius: 14px; box-shadow: 0 1px 2px rgba(31,42,36,0.08), 0 8px 24px rgba(31,42,36,0.10)" role="group" aria-label="Show on map">
+<div style="padding: 0 10px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5B6660">Show</div>
+<button onClick="{{lay.toggleTowns}}" aria-pressed="{{lay.townsPressed}}" style="{{lay.townsStyle}}"><span style="width: 9px; height: 9px; border-radius: 50%; border: 1.6px solid #4A564F; background: #FBF9F4; box-sizing: border-box"></span>Towns</button>
+<button onClick="{{lay.toggleLodging}}" aria-pressed="{{lay.lodgingPressed}}" style="{{lay.lodgingStyle}}"><span style="width: 9px; height: 9px; border-radius: 50%; background: #6E4A7E"></span>Lodging</button>
+<button onClick="{{lay.toggleFood}}" aria-pressed="{{lay.foodPressed}}" style="{{lay.foodStyle}}"><span style="width: 8px; height: 8px; border-radius: 2px; background: #C47F1E; transform: rotate(45deg)"></span>Food</button>
+</div>
+
+<div style="position: absolute; right: 20px; top: 20px; display: flex; flex-direction: column; background: #FBF9F4; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(31,42,36,0.08), 0 8px 24px rgba(31,42,36,0.10)">
+<button aria-label="Zoom in" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #1F2A24; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+<div style="height: 1px; background: #E2DCCD; margin: 0 8px"></div>
+<button aria-label="Zoom out" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #1F2A24; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+<div style="height: 1px; background: #E2DCCD; margin: 0 8px"></div>
+<button aria-label="Reset bearing to north" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #1F2A24; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 19 21 12 17 5 21 12 2" fill="#C47F1E" stroke="#C47F1E"></polygon></svg></button>
+</div>
+
+<sc-if value="{{popupOpen}}" hint-placeholder-val="{{ true }}">
+<div style="{{popup.style}}" role="dialog" aria-label="Stop details">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8F5A12">{{popup.eyebrow}}</div>
+<div style="font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500; line-height: 1.15">{{popup.name}}</div>
+<div style="font-size: 13px; color: #5B6660">{{popup.sub}}</div>
+</div>
+<button onClick="{{closePopup}}" aria-label="Close stop details" style="width: 32px; height: 32px; margin: -6px -6px 0 0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; border-radius: 8px; color: #5B6660; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #F4EFF5; border-radius: 10px; font-size: 13px; color: #4E3559">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>
+No lodging chosen for this night yet
+</div>
+<div style="display: flex; gap: 8px">
+<button style="flex-grow: 1; height: 40px; border: 0; border-radius: 10px; background: #2E4B3C; color: #FBF9F4; font-size: 13.5px; font-weight: 600; cursor: pointer">Choose lodging</button>
+<button style="height: 40px; padding: 0 14px; border: 1px solid #D8D0BD; border-radius: 10px; background: #FFFFFF; color: #1F2A24; font-size: 13.5px; font-weight: 500; cursor: pointer">Remove stop</button>
+</div>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 20px; bottom: 20px; display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: rgba(251,249,244,0.94); border-radius: 999px; font-size: 12.5px; color: #3E4944; box-shadow: 0 1px 2px rgba(31,42,36,0.08)">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+<span>Drag a numbered pin to move a stop · Click the trail to add one · Click any marker for details</span>
+</div>
+<div style="position: absolute; right: 12px; bottom: 8px; font-size: 10.5px; color: #6B6F63">MapLibre · OpenFreeMap · © OpenMapTiles · Data from OpenStreetMap</div>
+</section>
+
+<aside aria-label="Itinerary" style="width: 480px; height: 828px; display: flex; flex-direction: column; background: #FBF9F4; border-left: 1px solid #E2DCCD; box-sizing: border-box">
+<div style="padding: 24px 28px 20px; display: flex; flex-direction: column; gap: 16px; border-bottom: 1px solid #E2DCCD">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #5B6660">Your itinerary</div>
+<h1 style="margin: 0; font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.1">11 days, sea to hills</h1>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid #E2DCCD; border-radius: 12px; background: #FFFFFF">
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 12px; color: #5B6660">Distance</div>
+<div style="font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums">{{totals.dist}}</div>
+</div>
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #E2DCCD">
+<div style="font-size: 12px; color: #5B6660">Climbing</div>
+<div style="font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums">{{totals.gain}}</div>
+</div>
+<div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #E2DCCD">
+<div style="font-size: 12px; color: #5B6660">Nights booked</div>
+<div style="font-family: Newsreader, Georgia, serif; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums">0 <span style="font-size: 15px; color: #5B6660">of 11</span></div>
+</div>
+</div>
+</div>
+
+<div style="flex-grow: 1; overflow-y: auto; padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="6">
+<div style="{{d.cardStyle}}">
+<button onClick="{{d.pick}}" aria-pressed="{{d.pressed}}" style="display: flex; gap: 14px; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; color: inherit; cursor: pointer">
+<div style="{{d.badgeStyle}}">{{d.n}}</div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<div style="font-family: Newsreader, Georgia, serif; font-size: 18px; font-weight: 500; line-height: 1.25; text-wrap: pretty">{{d.from}} <span style="color: #8C8470">→</span> {{d.to}}</div>
+<div style="flex-shrink: 0; font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums">{{d.dist}}<span style="font-family: 'Instrument Sans', sans-serif; font-size: 12px; color: #5B6660; margin-left: 3px">{{d.unit}}</span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: #4A554F; flex-wrap: wrap">
+<span style="display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m8 3 4 8 5-5 5 15H2L8 3z"></path></svg>{{d.gain}}</span>
+<span style="{{d.lunchStyle}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg>{{d.lunchText}}</span>
+<sc-if value="{{d.hasTag}}" hint-placeholder-val="{{ false }}"><span style="padding: 2px 8px; border-radius: 999px; background: #F3E3C7; color: #7A4C0F; font-size: 11.5px; font-weight: 600">{{d.tag}}</span></sc-if>
+</div>
+</div>
+</button>
+<div style="display: flex; align-items: center; justify-content: space-between; padding-left: 50px">
+<button aria-label="{{d.lodgeLabel}}" style="height: 34px; padding: 0 12px; display: flex; align-items: center; gap: 7px; border: 1px dashed #B9A6C2; border-radius: 999px; background: #FBF7FC; color: #5A3B69; font-size: 13px; font-weight: 500; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>Choose lodging</button>
+<div style="display: flex; gap: 2px">
+<button aria-label="{{d.taxiLabel}}" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #5B6660; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg></button>
+<button aria-label="{{d.bedLabel}}" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #5B6660; cursor: pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"></circle><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"></path></svg></button>
+<button aria-label="{{d.removeLabel}}" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: #5B6660; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C47F1E","options":["#C47F1E","#B5523B","#2F6F8F"]},"$preview":{"width":1440,"height":900}}'>
+var DAYS = [
+  { n: 1, from: 'Buckie', to: 'Spey Bay', mi: 5.7, ft: 148, lunch: 1 },
+  { n: 2, from: 'Spey Bay', to: 'Fochabers', mi: 5.2, ft: 148, lunch: 1 },
+  { n: 3, from: 'Fochabers', to: 'Craigellachie', mi: 12.7, ft: 1325, lunch: 1 },
+  { n: 4, from: 'Craigellachie', to: 'Aberlour', mi: 2.0, ft: 33, lunch: 0 },
+  { n: 5, from: 'Aberlour', to: 'Ballindalloch', mi: 9.8, ft: 354, lunch: 1 },
+  { n: 6, from: 'Ballindalloch', to: 'Grantown-on-Spey', mi: 14.9, ft: 1568, lunch: 0 },
+  { n: 7, from: 'Grantown-on-Spey', to: 'Boat of Garten', mi: 10.7, ft: 305, lunch: 1 },
+  { n: 8, from: 'Boat of Garten', to: 'Aviemore', mi: 5.6, ft: 148, lunch: 3 },
+  { n: 9, from: 'Aviemore', to: 'Kincraig', mi: 6.9, ft: 361, lunch: 1 },
+  { n: 10, from: 'Kincraig', to: 'Osprey Hotel', mi: 10.5, ft: 676, lunch: 1 },
+  { n: 11, from: 'Osprey Hotel', to: 'Newtonmore', mi: 2.8, ft: 125, lunch: 1 }
+];
+var PINS = [[847,60],[770,65],[763,136],[706,280],[683,302],[582,370],[444,470],[351,562],[302,626],[240,704],[160,758],[120,775]];
+var STOPS = ['Buckie','Spey Bay','Fochabers','Craigellachie','Aberlour','Ballindalloch','Grantown-on-Spey','Boat of Garten','Aviemore','Kincraig','Osprey Hotel','Newtonmore'];
+var INITIAL = { sel: 6, metric: false, towns: true, lodging: true, food: false, popupOpen: true };
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = Object.assign({}, INITIAL);
+  }
+  renderVals() {
+    var s = this.state;
+    var self = this;
+    var accent = this.props.accent ?? '#C47F1E';
+    var fmtD = function (mi) { return s.metric ? (mi * 1.609344).toFixed(1) : mi.toFixed(1); };
+    var dU = s.metric ? 'km' : 'mi';
+    var fmtG = function (ft) { return s.metric ? Math.round(ft * 0.3048).toLocaleString('en-US') + ' m' : ft.toLocaleString('en-US') + ' ft'; };
+    var maxMi = Math.max.apply(null, DAYS.map(function (d) { return d.mi; }));
+    var maxFt = Math.max.apply(null, DAYS.map(function (d) { return d.ft; }));
+    var totMi = DAYS.reduce(function (a, d) { return a + d.mi; }, 0);
+    var totFt = DAYS.reduce(function (a, d) { return a + d.ft; }, 0);
+
+    var days = DAYS.map(function (d) {
+      var on = d.n === s.sel;
+      var tags = [];
+      if (d.mi === maxMi) tags.push('Longest');
+      if (d.ft === maxFt) tags.push('Most climbing');
+      return {
+        n: d.n, from: d.from, to: d.to,
+        dist: fmtD(d.mi), unit: dU, gain: fmtG(d.ft),
+        lunchText: d.lunch > 0 ? d.lunch + (d.lunch === 1 ? ' lunch stop' : ' lunch stops') : 'Pack a lunch',
+        lunchStyle: 'display: flex; align-items: center; gap: 5px; ' + (d.lunch > 0 ? 'color: #4A554F' : 'color: #8F5A12; font-weight: 600'),
+        tag: tags.join(' · '), hasTag: tags.length > 0,
+        pressed: on ? 'true' : 'false',
+        cardStyle: 'display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 10px 16px; border-radius: 14px; border: 1px solid ' + (on ? '#DDB57A' : '#E7E1D3') + '; background: ' + (on ? '#FAF1E1' : '#FFFFFF') + (on ? '; box-shadow: 0 6px 18px rgba(143,90,18,0.10)' : ''),
+        badgeStyle: 'width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: Newsreader, Georgia, serif; font-size: 16px; font-weight: 600; background: ' + (on ? accent : '#EAEFE6') + '; color: ' + (on ? '#FFFFFF' : '#2E4B3C'),
+        lodgeLabel: 'Choose lodging in ' + d.to,
+        taxiLabel: 'Taxi and bag transfer for day ' + d.n,
+        bedLabel: 'Show day ' + d.n + ' on the map',
+        removeLabel: 'Remove day ' + d.n,
+        pick: function () { self.setState({ sel: d.n, popupOpen: true }); }
+      };
+    });
+
+    var segs = {};
+    DAYS.forEach(function (d) {
+      var on = d.n === s.sel;
+      segs['s' + d.n] = { c: on ? accent : (d.n % 2 ? '#2E4B3C' : '#7C9876'), w: on ? 7 : 4.5 };
+    });
+
+    var pins = {};
+    PINS.forEach(function (p, i) {
+      var n = i + 1;
+      var isEnd = n === 1 || n === 12;
+      var selEnd = n === s.sel || n === s.sel + 1;
+      var fill = isEnd ? '#1F2A24' : '#FFFDF8';
+      var text = isEnd ? '#FFFDF8' : '#1F2A24';
+      if (selEnd) { fill = accent; text = '#FFFFFF'; }
+      pins['p' + n] = { fill: fill, text: text, stroke: selEnd ? '#FFFDF8' : '#1F2A24', r: selEnd ? 15 : 13 };
+    });
+
+    var end = PINS[s.sel];
+    var left = end[0] > 600 ? end[0] - 24 - 280 : end[0] + 26;
+    var top = Math.max(76, Math.min(828 - 260, end[1] - 50));
+    var popup = {
+      style: 'position: absolute; left: ' + left + 'px; top: ' + top + 'px; width: 280px; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 1px 2px rgba(31,42,36,0.08), 0 16px 40px rgba(31,42,36,0.18)',
+      eyebrow: 'Stop ' + (s.sel + 1),
+      name: STOPS[s.sel],
+      sub: s.sel === 11 ? 'Finish · end of day 11' : 'End of day ' + s.sel + ' · start of day ' + (s.sel + 1)
+    };
+
+    var seg = function (on) {
+      return 'height: 34px; padding: 0 12px; border-radius: 8px; border: 0; font-size: 13px; font-weight: 600; cursor: pointer; ' +
+        (on ? 'background: #FFFFFF; color: #1F2A24; box-shadow: 0 1px 2px rgba(31,42,36,0.12)' : 'background: transparent; color: #5B6660');
+    };
+    var chip = function (on) {
+      return 'height: 34px; padding: 0 12px; display: flex; align-items: center; gap: 7px; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; ' +
+        (on ? 'border: 1px solid #2E4B3C; background: #EAEFE6; color: #1F2A24' : 'border: 1px solid transparent; background: transparent; color: #6B6F63');
+    };
+
+    return {
+      days: days, segs: segs, pins: pins, popup: popup, popupOpen: s.popupOpen,
+      totals: { dist: fmtD(totMi) + ' ' + dU, gain: fmtG(totFt) },
+      units: {
+        impStyle: seg(!s.metric), metStyle: seg(s.metric),
+        impPressed: s.metric ? 'false' : 'true', metPressed: s.metric ? 'true' : 'false'
+      },
+      lay: {
+        townsOp: s.towns ? 1 : 0, lodgingOp: s.lodging ? 1 : 0, foodOp: s.food ? 1 : 0,
+        townsStyle: chip(s.towns), lodgingStyle: chip(s.lodging), foodStyle: chip(s.food),
+        townsPressed: String(s.towns), lodgingPressed: String(s.lodging), foodPressed: String(s.food),
+        toggleTowns: function () { self.setState({ towns: !s.towns }); },
+        toggleLodging: function () { self.setState({ lodging: !s.lodging }); },
+        toggleFood: function () { self.setState({ food: !s.food }); }
+      },
+      setImperial: function () { self.setState({ metric: false }); },
+      setMetric: function () { self.setState({ metric: true }); },
+      reset: function () { self.setState(Object.assign({}, INITIAL)); },
+      closePopup: function () { self.setState({ popupOpen: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
