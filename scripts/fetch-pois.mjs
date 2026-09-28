@@ -81,6 +81,14 @@ function nearestOnTrail(lat, lon) {
   return best;
 }
 
+// interpolate lat/lon at a fractional index on the trail polyline
+function positionAt(fracIdx) {
+  const i = Math.max(0, Math.min(TRAIL.length - 2, Math.floor(fracIdx)));
+  const t = fracIdx - i;
+  const a = TRAIL[i], b = TRAIL[i + 1];
+  return { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t };
+}
+
 function classify(e) {
   const t = e.tags || {};
   // distilleries first: many also carry tourism=attraction / amenity tags
@@ -339,5 +347,100 @@ console.log('with photos:', pois.filter(p => p.imageUrl).length);
 const counts = pois.reduce((m, p) => ((m[p.kind] = (m[p.kind] || 0) + 1), m), {});
 console.log(`kept ${pois.length} POIs within ${MAX_DIST_M}m:`, counts);
 console.log('unnamed:', pois.filter(p => !p.name).length);
+
+// ---- off-trail detour routes (public Valhalla pedestrian routing) ----
+// lodging too far off-trail gets a walked route from the best trail junction
+// so the map can draw the side trip. Cached in detour-cache.json; failures
+// are NOT cached so a flaky run doesn't poison future ones.
+const DETOUR_CACHE = join(ROOT, 'data', 'raw', 'detour-cache.json');
+const detourCache = existsSync(DETOUR_CACHE) ? JSON.parse(readFileSync(DETOUR_CACHE, 'utf8')) : {};
+const VALHALLA = 'https://valhalla1.openstreetmap.de';
+
+// decode a Valhalla shape (encoded polyline, precision 6) -> [lon,lat][]
+function decodePolyline(str) {
+  const coords = [];
+  let i = 0, lat = 0, lon = 0;
+  const dec = () => {
+    let r = 0, s = 0, b;
+    do {
+      b = str.charCodeAt(i++) - 63;
+      r |= (b & 0x1f) << s;
+      s += 5;
+    } while (b >= 0x20);
+    return r & 1 ? ~(r >> 1) : r >> 1;
+  };
+  while (i < str.length) {
+    lat += dec();
+    lon += dec();
+    coords.push([lon / 1e6, lat / 1e6]);
+  }
+  return coords;
+}
+
+const valhallaGet = (service, json) =>
+  fetch(`${VALHALLA}/${service}?json=${encodeURIComponent(JSON.stringify(json))}`, {
+    headers: { 'User-Agent': UA },
+  }).then(r => r.json());
+
+async function detourFor(p) {
+  const key = `${p.id}@${p.lat},${p.lon}`;
+  if (key in detourCache) return detourCache[key];
+  let out = null;
+  try {
+    // candidate junctions: the snapped point plus samples ~±7km along the trail —
+    // the geometrically nearest trail point often isn't the best routable one
+    const candIdxs = [-240, -180, -120, -80, -40, 0, 40, 80, 120, 180, 240].map(d =>
+      Math.max(0, Math.min(TRAIL.length - 1, Math.round(p.trailIdx + d))),
+    );
+    const cands = [...new Set(candIdxs)].map(positionAt);
+    // phase 1: distance matrix from every junction to the POI -> pick the best
+    const mj = await valhallaGet('sources_to_targets', {
+      sources: cands.map(c => ({ lat: c.lat, lon: c.lon })),
+      targets: [{ lat: p.lat, lon: p.lon }],
+      costing: 'pedestrian',
+      units: 'kilometres',
+    });
+    if (!mj.sources_to_targets) throw new Error('bad matrix response');
+    const dists = mj.sources_to_targets.map(row => row?.[0]?.distance ?? Infinity);
+    const best = dists.reduce((bi, d, i) => (d < dists[bi] ? i : bi), 0);
+    if (Number.isFinite(dists[best])) {
+      // phase 2: full geometry for the winning junction only
+      const rj = await valhallaGet('route', {
+        locations: [{ lat: cands[best].lat, lon: cands[best].lon }, { lat: p.lat, lon: p.lon }],
+        costing: 'pedestrian',
+        units: 'kilometres',
+      });
+      if (!rj.trip) throw new Error('bad route response');
+      // each leg has its own delta-encoded shape — decode separately then concat
+      const coords = (rj.trip.legs ?? []).flatMap(l => decodePolyline(l.shape ?? ''));
+      if (coords?.length) {
+        out = { distM: Math.round((rj.trip.summary?.length ?? 0) * 1000), coords };
+      }
+    }
+    detourCache[key] = out; // definitive answer (route found or none exists)
+  } catch {
+    // network/API failure — leave uncached so the next run retries
+  }
+  return out;
+}
+
+const farLodging = pois.filter(
+  p => p.kind === 'accommodation' && p.distToTrailM > 2000 && p.distToTrailM < 12000,
+);
+let detoursDone = 0;
+for (let i = 0; i < farLodging.length; i += 4) {
+  await Promise.all(
+    farLodging.slice(i, i + 4).map(async p => {
+      const d = await detourFor(p);
+      if (d) p.detour = d;
+      detoursDone++;
+    }),
+  );
+  process.stdout.write(`\rdetour routes ${Math.min(detoursDone, farLodging.length)}/${farLodging.length}`);
+}
+console.log();
+writeFileSync(DETOUR_CACHE, JSON.stringify(detourCache));
+console.log('with detour routes:', pois.filter(p => p.detour).length);
+
 writeFileSync(OUT, JSON.stringify(pois));
 console.log(`wrote ${OUT}`);

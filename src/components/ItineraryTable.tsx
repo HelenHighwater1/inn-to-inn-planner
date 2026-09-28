@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { usePlanner } from '../store';
 import { deriveDays } from '../lib/itinerary';
-import { distilleriesNear, distilleryPois, fmtKm, fmtM, lunchPois, POIS } from '../lib/trail';
+import { distilleriesNear, distilleryPois, fmtKm, fmtM, lunchPois, POIS, type Poi } from '../lib/trail';
 
 const ICONS = {
   mountain: (
@@ -56,10 +57,22 @@ export function ItineraryTable() {
   const stops = usePlanner(s => s.stops);
   const restAt = usePlanner(s => s.restAt);
   const skipped = usePlanner(s => s.skipped);
+  const extras = usePlanner(s => s.extras);
+  const reversed = usePlanner(s => s.reversed);
   const imperial = usePlanner(s => s.imperial);
   const selected = usePlanner(s => s.selected);
-  const { selectDay, focusSegment, openStop, toggleRest, toggleSkip, removeStop } =
-    usePlanner.getState();
+  const [adding, setAdding] = useState<string | null>(null);
+  const {
+    selectDay,
+    focusSegment,
+    openStop,
+    setRestDays,
+    toggleSkip,
+    removeStop,
+    addExtra,
+    removeExtra,
+    setHoverPois,
+  } = usePlanner.getState();
 
   const days = deriveDays(stops, restAt, skipped);
   const lastStopId = stops[stops.length - 1]?.id;
@@ -85,13 +98,66 @@ export function ItineraryTable() {
   const gain = (m: number) =>
     `${(imperial ? Math.round(m * 3.28084) : Math.round(m)).toLocaleString('en-US')} ${imperial ? 'ft' : 'm'}`;
 
+  // visits/notes pinned to a day — chips + suggestions + free-text input
+  const extrasBlock = (key: string, sugg: Poi[]) => {
+    const ex = extras[key] ?? [];
+    const fresh = sugg.filter(p => p.name && !ex.some(e => e.poiId === p.id)).slice(0, 5);
+    return (
+      <div className="day-extras">
+        {ex.map((e, ei) => {
+          const poi = e.poiId ? POIS.find(p => p.id === e.poiId) : null;
+          const label = poi?.name ?? e.text ?? '';
+          return (
+            <span key={ei} className="extra-chip">
+              {poi?.website ? (
+                <a href={poi.website} target="_blank" rel="noopener noreferrer">
+                  {label}
+                </a>
+              ) : (
+                label
+              )}
+              <button aria-label={`Remove ${label}`} onClick={() => removeExtra(key, ei)}>
+                {ICONS.close}
+              </button>
+            </span>
+          );
+        })}
+        {adding === key ? (
+          <div className="extra-add">
+            {fresh.map(p => (
+              <button key={p.id} className="extra-sugg" onClick={() => addExtra(key, { poiId: p.id })}>
+                + {p.name}
+              </button>
+            ))}
+            <input
+              autoFocus
+              placeholder="Add a visit or note…"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                  addExtra(key, { text: e.currentTarget.value.trim() });
+                  e.currentTarget.value = '';
+                }
+                if (e.key === 'Escape') setAdding(null);
+              }}
+              onBlur={() => setAdding(null)}
+            />
+          </div>
+        ) : (
+          <button className="extra-add-btn" onClick={() => setAdding(key)}>
+            + Add
+          </button>
+        )}
+      </div>
+    );
+  };
+
   let dayNum = 0;
   return (
     <>
       <div className="side-head">
         <div className="eyebrow">Your itinerary</div>
         <h2 className="side-title">
-          {days.length} day{days.length === 1 ? '' : 's'}, sea to hills
+          {days.length} day{days.length === 1 ? '' : 's'}, {reversed ? 'hills to sea' : 'sea to hills'}
         </h2>
         <div className="stat-strip">
           <div className="stat">
@@ -120,25 +186,29 @@ export function ItineraryTable() {
       </div>
 
       <div className="day-cards">
-        {days.map((d, i) => {
+        {days.map(d => {
           dayNum++;
           const n = dayNum;
 
           if (d.type === 'rest') {
-            const sel = selected === `rest:${d.stop.id}`;
+            const rk = `rest:${d.stop.id}:${d.num}`;
+            const sel = selected === rk;
             const lodge = d.stop.lodgingId ? POIS.find(p => p.id === d.stop.lodgingId) : null;
             const dists = distilleriesNear(d.stop.trailIdx).filter(p => p.name && p.popular);
             return (
-              <div key={`r${i}`} className={`day-card rest${sel ? ' selected' : ''}`}>
+              <div key={rk} className={`day-card rest${sel ? ' selected' : ''}`}>
                 <button
                   className="day-main"
                   aria-pressed={sel}
-                  onClick={() => selectDay(`rest:${d.stop.id}`)}
+                  onClick={() => selectDay(rk)}
                 >
                   <div className="day-badge">{n}</div>
                   <div className="day-body">
                     <div className="day-top">
-                      <div className="day-title">Rest day at {d.stop.name}</div>
+                      <div className="day-title">
+                        Rest day at {d.stop.name}
+                        {d.of > 1 ? ` (${d.num} of ${d.of})` : ''}
+                      </div>
                       <div className="day-dist">—</div>
                     </div>
                     <div className="day-meta">
@@ -153,6 +223,7 @@ export function ItineraryTable() {
                     </div>
                   </div>
                 </button>
+                {extrasBlock(rk, dists)}
                 <div className="day-actions">
                   <button
                     className={`lodge-pill${lodge ? ' set' : ''}`}
@@ -163,7 +234,10 @@ export function ItineraryTable() {
                     {lodge?.name ?? 'Choose lodging'}
                   </button>
                   <div className="day-icons">
-                    <button aria-label="Remove rest day" onClick={() => toggleRest(d.stop.id)}>
+                    <button
+                      aria-label="Remove rest day"
+                      onClick={() => setRestDays(d.stop.id, d.of - 1)}
+                    >
                       {ICONS.close}
                     </button>
                   </div>
@@ -212,14 +286,27 @@ export function ItineraryTable() {
                       {ICONS.mountain}
                       {isCab ? '—' : gain(seg.gainM)}
                     </span>
-                    <span className={`meta lunch${lunch.length || isCab ? '' : ' none'}`}>
-                      {ICONS.utensils}
-                      {isCab
-                        ? 'By taxi'
-                        : lunch.length
-                          ? `${lunch.length} lunch stop${lunch.length > 1 ? 's' : ''}`
-                          : 'Pack a lunch'}
-                    </span>
+                    {isCab ? (
+                      <span className="meta lunch">{ICONS.utensils}By taxi</span>
+                    ) : lunch.length > 0 ? (
+                      <span
+                        className="meta lunch"
+                        title={lunch.map(p => p.name ?? p.subtype.replaceAll('_', ' ')).join(', ')}
+                        onMouseEnter={() => setHoverPois(lunch.map(p => p.id))}
+                        onMouseLeave={() => setHoverPois(null)}
+                      >
+                        {ICONS.utensils}
+                        {lunch.length} lunch stop{lunch.length > 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span className="meta lunch none">{ICONS.utensils}Pack a lunch</span>
+                    )}
+                    {lodge?.detour && (
+                      <span className="meta" title="Walking distance from the trail to tonight's lodging">
+                        {ICONS.bed}
+                        {fmtKm(lodge.detour.distM / 1000, imperial)} each way off trail
+                      </span>
+                    )}
                     {dists.length > 0 && (
                       <span className="meta distillery">
                         {ICONS.bottle}
@@ -235,6 +322,7 @@ export function ItineraryTable() {
                   </div>
                 </div>
               </button>
+              {extrasBlock(seg.key, dists)}
               <div className="day-actions">
                 <button
                   className={`lodge-pill${lodge ? ' set' : ''}`}
@@ -270,5 +358,88 @@ export function ItineraryTable() {
         })}
       </div>
     </>
+  );
+}
+
+/** Print-only rendering of the full itinerary — revealed by @media print CSS. */
+export function PrintSheet() {
+  const stops = usePlanner(s => s.stops);
+  const restAt = usePlanner(s => s.restAt);
+  const skipped = usePlanner(s => s.skipped);
+  const extras = usePlanner(s => s.extras);
+  const reversed = usePlanner(s => s.reversed);
+  const imperial = usePlanner(s => s.imperial);
+
+  const days = deriveDays(stops, restAt, skipped);
+  const walkKm = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.distKm : s), 0);
+  const gainM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.gainM : s), 0);
+  const poi = (id?: string) => (id ? (POIS.find(p => p.id === id) ?? null) : null);
+  const exLabels = (key: string) =>
+    (extras[key] ?? []).map(e => poi(e.poiId)?.name ?? e.text).filter((x): x is string => !!x);
+  const stay = (p: Poi | null) =>
+    p
+      ? `Staying: ${p.name ?? 'lodging'}` +
+        (p.detour ? ` — ${fmtKm(p.detour.distM / 1000, imperial)} walk each way off trail` : '') +
+        (p.phone ? ` · ${p.phone}` : '') +
+        (p.website ? ` — ${p.website}` : '')
+      : null;
+
+  return (
+    <div className="print-sheet">
+      <h1>Speyside Way — inn-to-inn itinerary</h1>
+      <p className="ps-sub">
+        {reversed ? 'Newtonmore → Buckie (hills to sea)' : 'Buckie → Newtonmore (sea to hills)'} ·{' '}
+        {days.length} days · {fmtKm(walkKm, imperial)} walking · {fmtM(gainM, imperial)} climbing
+      </p>
+      {days.map((d, i) => {
+        if (d.type === 'rest') {
+          const rk = `rest:${d.stop.id}:${d.num}`;
+          const ex = exLabels(rk);
+          return (
+            <section key={rk}>
+              <h2>
+                Day {i + 1} — Rest day at {d.stop.name}
+                {d.of > 1 ? ` (${d.num} of ${d.of})` : ''}
+              </h2>
+              {stay(poi(d.stop.lodgingId)) && <p>{stay(poi(d.stop.lodgingId))}</p>}
+              {ex.length > 0 && (
+                <ul>
+                  {ex.map((x, j) => (
+                    <li key={j}>{x}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        }
+        const { seg } = d;
+        const isCab = d.type === 'cab';
+        const lunch = isCab ? [] : lunchPois(seg.from.trailIdx, seg.to.trailIdx);
+        const ex = exLabels(seg.key);
+        return (
+          <section key={seg.key}>
+            <h2>
+              Day {i + 1} — {seg.from.name} → {seg.to.name}
+            </h2>
+            <p>
+              {isCab
+                ? `By taxi ≈${fmtKm(seg.cabKm, imperial)}`
+                : `${fmtKm(seg.distKm, imperial)} walking · ${fmtM(seg.gainM, imperial)} climbing`}
+            </p>
+            {lunch.length > 0 && (
+              <p>Lunch options: {lunch.map(p => p.name).filter(Boolean).join(', ')}</p>
+            )}
+            {ex.length > 0 && (
+              <ul>
+                {ex.map((x, j) => (
+                  <li key={j}>{x}</li>
+                ))}
+              </ul>
+            )}
+            {stay(poi(seg.to.lodgingId)) && <p>{stay(poi(seg.to.lodgingId))}</p>}
+          </section>
+        );
+      })}
+    </div>
   );
 }

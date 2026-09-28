@@ -1,5 +1,5 @@
 import { TrailMap } from './components/TrailMap';
-import { ItineraryTable } from './components/ItineraryTable';
+import { ItineraryTable, PrintSheet } from './components/ItineraryTable';
 import { usePlanner } from './store';
 import './App.css';
 
@@ -7,6 +7,8 @@ export default function App() {
   const imperial = usePlanner(s => s.imperial);
   const setImperial = usePlanner(s => s.setImperial);
   const reset = usePlanner(s => s.reset);
+  const reversed = usePlanner(s => s.reversed);
+  const toggleDirection = usePlanner(s => s.toggleDirection);
 
   return (
     <div className="app">
@@ -24,10 +26,54 @@ export default function App() {
           </svg>
           <div className="brand-text">
             <div className="brand-title">Speyside Way</div>
-            <div className="brand-sub">Inn-to-inn planner · Buckie to Newtonmore</div>
+            <div className="brand-sub">
+              Inn-to-inn planner · {reversed ? 'Newtonmore to Buckie' : 'Buckie to Newtonmore'}
+            </div>
           </div>
         </div>
         <div className="header-controls">
+          <button
+            className="dir-btn"
+            onClick={toggleDirection}
+            aria-label="Reverse hiking direction"
+            title="Reverse hiking direction"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m17 3 4 4-4 4" />
+              <path d="M21 7H8" />
+              <path d="m7 21-4-4 4-4" />
+              <path d="M3 17h13" />
+            </svg>
+            <span>{reversed ? 'Hills to sea' : 'Sea to hills'}</span>
+          </button>
+          <button className="print-btn" onClick={() => window.print()} aria-label="Print itinerary">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9V3h12v6" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            <span>Print</span>
+          </button>
           <div className="units" role="group" aria-label="Units">
             <button
               aria-pressed={imperial}
@@ -69,6 +115,7 @@ export default function App() {
         <TrailMap />
         <aside aria-label="Itinerary">
           <ItineraryTable />
+          <PrintSheet />
         </aside>
       </main>
     </div>

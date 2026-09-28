@@ -8,15 +8,24 @@ import {
   type Stop,
 } from './lib/trail';
 
+/** A visit/note added to a specific day — a POI reference or free text. */
+export interface Extra {
+  poiId?: string;
+  text?: string;
+}
+
 interface PlannerState {
   stops: Stop[]; // sorted by trailIdx; first/last are the trip endpoints
-  restAt: Set<string>; // stop ids that get a rest day on arrival
+  restAt: Record<string, number>; // stop id -> rest days (extra nights) on arrival
   skipped: Set<string>; // segment keys done by cab
+  extras: Record<string, Extra[]>; // day key ("idA>idB" or "rest:{id}") -> visits/notes
+  reversed: boolean; // hiking direction: false = Buckie → Newtonmore
   imperial: boolean;
   selected: string | null; // selected day: segment key "idA>idB" or "rest:{stopId}"
   focusSeg: { key: string; seq: number } | null; // table -> map fly-to request
   focusStop: { id: string; seq: number; pan: boolean } | null; // open stop popup; pan = also fly to the stop
   showPois: { accommodation: boolean; food: boolean; town: boolean; distillery: boolean };
+  hoverPois: string[] | null; // poi ids to highlight on the map (e.g. lunch hover)
   selectDay: (key: string, endStopId?: string) => void;
   focusSegment: (key: string) => void;
   openStop: (id: string) => void;
@@ -24,11 +33,15 @@ interface PlannerState {
   addStop: (fracIdx: number, poi?: Poi) => void;
   moveStop: (id: string, fracIdx: number) => void;
   removeStop: (id: string) => void;
-  toggleRest: (stopId: string) => void;
+  setRestDays: (stopId: string, days: number) => void;
+  addExtra: (key: string, extra: Extra) => void;
+  removeExtra: (key: string, idx: number) => void;
   toggleSkip: (key: string) => void;
+  toggleDirection: () => void;
   togglePoi: (kind: 'accommodation' | 'food' | 'town' | 'distillery') => void;
   toggleUnits: () => void;
   setImperial: (v: boolean) => void;
+  setHoverPois: (ids: string[] | null) => void;
   reset: () => void;
 }
 
@@ -78,8 +91,10 @@ function defaultStops(): Stop[] {
 
 interface Persisted {
   s: [number, string, string, string?][];
-  r: string[];
+  r: Record<string, number> | string[]; // v2: id -> rest days; v1 tolerated (array of ids)
   k: string[];
+  e: Record<string, Extra[]>;
+  d: 0 | 1;
   u: 0 | 1;
 }
 const LS_KEY = 'speyside-itinerary-v1';
@@ -87,8 +102,10 @@ const LS_KEY = 'speyside-itinerary-v1';
 function serialize(s: PlannerState): Persisted {
   return {
     s: s.stops.map(st => [+st.trailIdx.toFixed(1), st.name, st.kind, st.lodgingId]),
-    r: [...s.restAt],
+    r: s.restAt,
     k: [...s.skipped],
+    e: s.extras,
+    d: s.reversed ? 1 : 0,
     u: s.imperial ? 1 : 0,
   };
 }
@@ -100,7 +117,10 @@ function b64decode(s: string): object {
   return JSON.parse(atob(s.replaceAll('-', '+').replaceAll('_', '/')));
 }
 
-function loadInitial(): Pick<PlannerState, 'stops' | 'restAt' | 'skipped' | 'imperial'> {
+function loadInitial(): Pick<
+  PlannerState,
+  'stops' | 'restAt' | 'skipped' | 'extras' | 'reversed' | 'imperial'
+> {
   let blob: Persisted | null = null;
   try {
     const h = location.hash;
@@ -122,14 +142,26 @@ function loadInitial(): Pick<PlannerState, 'stops' | 'restAt' | 'skipped' | 'imp
         lodgingId: lodgingId || undefined,
       }))
       .sort((a, b) => a.trailIdx - b.trailIdx);
+    const restAt: Record<string, number> = Array.isArray(blob.r)
+      ? Object.fromEntries(blob.r.map(id => [id, 1]))
+      : (blob.r ?? {});
     return {
       stops,
-      restAt: new Set(blob.r ?? []),
+      restAt,
       skipped: new Set(blob.k ?? []),
+      extras: blob.e ?? {},
+      reversed: blob.d === 1,
       imperial: blob.u === 1,
     };
   }
-  return { stops: defaultStops(), restAt: new Set(), skipped: new Set(), imperial: false };
+  return {
+    stops: defaultStops(),
+    restAt: {},
+    skipped: new Set(),
+    extras: {},
+    reversed: false,
+    imperial: false,
+  };
 }
 
 const initial = loadInitial();
@@ -140,6 +172,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   focusSeg: null,
   focusStop: null,
   showPois: { accommodation: true, food: false, town: true, distillery: true },
+  hoverPois: null,
 
   // selecting a day card: highlight on the map, fly to the segment,
   // and open the popup on the day's end stop (without a second camera move)
@@ -185,28 +218,38 @@ export const usePlanner = create<PlannerState>((set, get) => ({
       const stops = s.stops.filter(x => x.id !== id);
       if (stops.length < 2) return s;
       const ids = new Set(stops.map(x => x.id));
-      const selGone =
-        s.selected !== null &&
-        s.selected
-          .split('>')
-          .some(part => !ids.has(part.startsWith('rest:') ? part.slice(5) : part));
+      const keyAlive = (key: string) =>
+        key.startsWith('rest:')
+          ? ids.has(key.slice(5).split(':')[0])
+          : key.split('>').every(x => ids.has(x));
       return {
         stops,
-        selected: selGone ? null : s.selected,
-        restAt: new Set([...s.restAt].filter(r => ids.has(r))),
-        skipped: new Set(
-          [...s.skipped].filter(k => k.split('>').every(x => ids.has(x))),
-        ),
+        selected: s.selected !== null && !keyAlive(s.selected) ? null : s.selected,
+        restAt: Object.fromEntries(Object.entries(s.restAt).filter(([k]) => ids.has(k))),
+        skipped: new Set([...s.skipped].filter(keyAlive)),
+        extras: Object.fromEntries(Object.entries(s.extras).filter(([k]) => keyAlive(k))),
       };
     });
   },
 
-  toggleRest: id =>
+  setRestDays: (stopId, days) =>
     set(s => {
-      const restAt = new Set(s.restAt);
-      if (restAt.has(id)) restAt.delete(id);
-      else restAt.add(id);
+      const restAt = { ...s.restAt };
+      if (days <= 0) delete restAt[stopId];
+      else restAt[stopId] = days;
       return { restAt };
+    }),
+
+  addExtra: (key, extra) =>
+    set(s => ({ extras: { ...s.extras, [key]: [...(s.extras[key] ?? []), extra] } })),
+
+  removeExtra: (key, idx) =>
+    set(s => {
+      const list = (s.extras[key] ?? []).filter((_, i) => i !== idx);
+      const extras = { ...s.extras };
+      if (list.length) extras[key] = list;
+      else delete extras[key];
+      return { extras };
     }),
 
   toggleSkip: key =>
@@ -220,9 +263,33 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   togglePoi: kind => set(s => ({ showPois: { ...s.showPois, [kind]: !s.showPois[kind] } })),
   toggleUnits: () => set(s => ({ imperial: !s.imperial })),
   setImperial: v => set(s => (s.imperial === v ? s : { imperial: v })),
+  setHoverPois: ids => set({ hoverPois: ids }),
+
+  // reverse the whole trip: stops reorder, seg-keyed state gets key-flipped
+  toggleDirection: () =>
+    set(s => {
+      const flip = (k: string) =>
+        k.startsWith('rest:') ? k : k.split('>').reverse().join('>');
+      return {
+        reversed: !s.reversed,
+        stops: [...s.stops].reverse(),
+        selected: s.selected ? flip(s.selected) : null,
+        skipped: new Set([...s.skipped].map(flip)),
+        extras: Object.fromEntries(
+          Object.entries(s.extras).map(([k, v]) => [flip(k), v]),
+        ),
+      };
+    }),
 
   reset: () =>
-    set({ stops: defaultStops(), restAt: new Set(), skipped: new Set(), selected: null }),
+    set({
+      stops: defaultStops(),
+      restAt: {},
+      skipped: new Set(),
+      extras: {},
+      reversed: false,
+      selected: null,
+    }),
 }));
 
 // persist on every change (debounced)

@@ -12,7 +12,7 @@ export interface Segment {
 
 export type DayRow =
   | { type: 'walk' | 'cab'; seg: Segment }
-  | { type: 'rest'; stop: Stop };
+  | { type: 'rest'; stop: Stop; num: number; of: number };
 
 export const segKey = (a: Stop, b: Stop) => `${a.id}>${b.id}`;
 
@@ -45,12 +45,13 @@ export function deriveSegments(stops: Stop[], skipped: Set<string>): Segment[] {
   return segs;
 }
 
-export function deriveDays(stops: Stop[], restAt: Set<string>, skipped: Set<string>): DayRow[] {
+export function deriveDays(stops: Stop[], restAt: Record<string, number>, skipped: Set<string>): DayRow[] {
   const days: DayRow[] = [];
   const segs = deriveSegments(stops, skipped);
   segs.forEach((seg, i) => {
     days.push({ type: seg.skipped ? 'cab' : 'walk', seg });
-    if (restAt.has(seg.to.id) && i < segs.length - 1) days.push({ type: 'rest', stop: seg.to });
+    const n = i < segs.length - 1 ? (restAt[seg.to.id] ?? 0) : 0;
+    for (let k = 1; k <= n; k++) days.push({ type: 'rest', stop: seg.to, num: k, of: n });
   });
   return days;
 }

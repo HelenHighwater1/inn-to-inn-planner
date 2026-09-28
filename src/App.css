@@ -109,7 +109,9 @@ header {
   display: none;
 }
 
-.reset-btn {
+.reset-btn,
+.dir-btn,
+.print-btn {
   height: 40px;
   padding: 0 14px;
   display: flex;
@@ -122,6 +124,14 @@ header {
   font-weight: 500;
   color: var(--ink);
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.dir-btn {
+  border-color: var(--forest);
+  background: var(--moss-tint);
+  color: var(--forest);
+  font-weight: 600;
 }
 
 /* ---------- layout ---------- */
@@ -443,6 +453,35 @@ aside {
 
 .sp-lodge svg {
   flex-shrink: 0;
+}
+
+.sp-nights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--meta);
+}
+
+.sp-nights .n-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-btn);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.sp-nights .n-count {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .sp-actions {
@@ -845,6 +884,171 @@ aside {
   color: var(--forest);
 }
 
+/* ---------- day extras (visits/notes) ---------- */
+.day-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-left: 50px;
+}
+
+.day-extras:empty {
+  display: none;
+}
+
+.extra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: var(--heather-tint);
+  color: var(--heather-text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.extra-chip a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--heather-text);
+}
+
+.extra-chip button {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.extra-chip button:hover {
+  background: rgba(90, 59, 105, 0.14);
+}
+
+.extra-add-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px dashed var(--line-btn);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.extra-add-btn:hover {
+  border-color: var(--forest);
+  color: var(--forest);
+}
+
+.extra-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.extra-sugg {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--moss-tint);
+  color: var(--forest);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.extra-add input {
+  flex: 1;
+  min-width: 140px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line-btn);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--ink);
+}
+
+/* ---------- print ---------- */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  .app {
+    height: auto;
+  }
+
+  .app > header,
+  .map-wrap,
+  .side-head,
+  .day-cards {
+    display: none !important;
+  }
+
+  main,
+  aside {
+    display: block;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    border: 0;
+  }
+
+  .print-sheet {
+    display: block;
+    padding: 16px;
+    max-width: 720px;
+    margin: 0 auto;
+    color: #000;
+    font-family: 'Instrument Sans', system-ui, sans-serif;
+  }
+
+  .print-sheet h1 {
+    font-family: var(--serif);
+    font-size: 24px;
+    margin: 0 0 4px;
+  }
+
+  .print-sheet .ps-sub {
+    font-size: 12.5px;
+    color: #444;
+    margin: 0 0 14px;
+  }
+
+  .print-sheet h2 {
+    font-family: var(--serif);
+    font-size: 15.5px;
+    margin: 14px 0 2px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 2px;
+  }
+
+  .print-sheet p,
+  .print-sheet ul {
+    font-size: 12.5px;
+    margin: 3px 0;
+  }
+
+  .print-sheet ul {
+    padding-left: 18px;
+  }
+}
+
 /* ---------- mobile ---------- */
 @media (max-width: 768px) {
   header {
@@ -876,13 +1080,17 @@ aside {
     display: inline;
   }
 
-  .reset-btn {
+  .reset-btn,
+  .dir-btn,
+  .print-btn {
     width: 40px;
     padding: 0;
     justify-content: center;
   }
 
-  .reset-btn span {
+  .reset-btn span,
+  .dir-btn span,
+  .print-btn span {
     display: none;
   }
 

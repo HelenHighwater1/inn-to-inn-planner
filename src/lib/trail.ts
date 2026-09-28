@@ -21,6 +21,7 @@ export interface Poi {
   website?: string;
   imageUrl?: string;
   popular?: boolean; // distilleries: visitor tagging / web presence proxy
+  detour?: { distM: number; coords: [number, number][] }; // foot-routed spur from the best trail junction
 }
 
 export interface Stop {
@@ -144,13 +145,13 @@ export function snapCandidatePreferTown(fracIdx: number, maxKm = 4): Poi | null 
   return bestTown ?? bestAny;
 }
 
-/** Food POIs within maxM of the trail, in the middle 60% of a segment. */
-export function lunchPois(fromIdx: number, toIdx: number, maxM = 1500): Poi[] {
+/** Food POIs within maxM of the trail, in the middle 50% of a segment. */
+export function lunchPois(fromIdx: number, toIdx: number, maxM = 805): Poi[] {
   const lo = Math.min(fromIdx, toIdx);
   const hi = Math.max(fromIdx, toIdx);
   const span = hi - lo;
-  const a = lo + span * 0.2;
-  const b = hi - span * 0.2;
+  const a = lo + span * 0.25;
+  const b = hi - span * 0.25;
   return POIS.filter(p => p.kind === 'food' && p.distToTrailM <= maxM && p.trailIdx >= a && p.trailIdx <= b);
 }
 

@@ -23,7 +23,7 @@ import {
 } from '../lib/trail';
 import { deriveDays, deriveSegments } from '../lib/itinerary';
 import { usePlanner } from '../store';
-import { AMBER, COPPER, COPPER_TEXT, dayColor, PAPER, PIN_FILL, SKIPPED } from '../lib/colors';
+import { AMBER, COPPER, COPPER_TEXT, dayColor, HEATHER, PAPER, PIN_FILL, SKIPPED } from '../lib/colors';
 import { MAP_STYLE } from '../lib/mapStyle';
 
 // The bundled entry doesn't sit next to maplibre-gl-worker.mjs, so the
@@ -91,6 +91,7 @@ export function TrailMap() {
   const focusStop = usePlanner(s => s.focusStop);
   const moveStop = usePlanner(s => s.moveStop);
   const togglePoi = usePlanner(s => s.togglePoi);
+  const hoverPois = usePlanner(s => s.hoverPois);
 
   function showPoiPopup(map: MLMap, poi: Poi) {
     const el = document.createElement('div');
@@ -165,7 +166,10 @@ export function TrailMap() {
       const thumb = p.imageUrl
         ? `<img class="lodge-thumb" src="${p.imageUrl}" loading="lazy" onerror="this.outerHTML='<span class=&quot;lodge-thumb empty&quot;>⌂</span>'" />`
         : `<span class="lodge-thumb empty">⌂</span>`;
-      row.innerHTML = `${thumb}<span><div>${p.name ?? '(unnamed)'}</div><div class="muted">${p.subtype.replaceAll('_', ' ')} · ${fmtDistM(p.distToTrailM, imp)} off trail</div></span>`;
+      const dist = p.detour
+        ? `${fmtDistM(p.detour.distM, imp)} walk each way`
+        : `${fmtDistM(p.distToTrailM, imp)} off trail`;
+      row.innerHTML = `${thumb}<span><div>${p.name ?? '(unnamed)'}</div><div class="muted">${p.subtype.replaceAll('_', ' ')} · ${dist}</div></span>`;
       const name = p.name ?? '(unnamed)';
       row.onclick = () => pick(p.id, name, row);
       list.appendChild(row);
@@ -213,6 +217,15 @@ export function TrailMap() {
         <button class="sp-close" aria-label="Close stop details">${ICONS.close}</button>
       </div>
       <div class="sp-lodge">${ICONS.bed}<span class="lodge-name">${lodge ?? 'No lodging chosen for this night yet'}</span></div>
+      ${
+        interior
+          ? `<div class="sp-nights">Nights here
+              <button class="n-btn" data-d="-1" aria-label="Fewer nights">−</button>
+              <span class="n-count">${(state.restAt[stop.id] ?? 0) + 1}</span>
+              <button class="n-btn" data-d="1" aria-label="More nights">+</button>
+            </div>`
+          : ''
+      }
       <div class="sp-actions">
         <button class="sp-choose">Choose lodging</button>
         ${interior ? '<button class="sp-remove">Remove stop</button>' : ''}
@@ -224,6 +237,14 @@ export function TrailMap() {
     popup.setLngLat([pos.lon, pos.lat]).setDOMContent(el).addTo(map);
 
     el.querySelector('.sp-close')!.addEventListener('click', () => popup.remove());
+    el.querySelectorAll<HTMLButtonElement>('.sp-nights .n-btn').forEach(b =>
+      b.addEventListener('click', () => {
+        const st = usePlanner.getState();
+        const next = Math.max(0, (st.restAt[stop.id] ?? 0) + Number(b.dataset.d));
+        st.setRestDays(stop.id, next);
+        el.querySelector('.n-count')!.textContent = `${next + 1}`;
+      }),
+    );
     el.querySelector('.sp-remove')?.addEventListener('click', () => {
       usePlanner.getState().removeStop(stop.id);
       popup.remove();
@@ -262,7 +283,9 @@ export function TrailMap() {
       });
       map.addSource('segments', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('segments-skipped', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addSource('detours', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('pois', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addSource('poi-highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('stops', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
       if (!map.hasImage('food-diamond')) map.addImage('food-diamond', makeDiamond(), { pixelRatio: 2 });
@@ -306,6 +329,14 @@ export function TrailMap() {
           'line-color': ['get', 'color'],
           'line-width': ['case', ['get', 'sel'], 7, 4.5],
         },
+      });
+      // foot-routed spurs to off-trail lodging
+      map.addLayer({
+        id: 'detours-line',
+        type: 'line',
+        source: 'detours',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': HEATHER, 'line-width': 2.5, 'line-dasharray': [1, 2], 'line-opacity': 0.9 },
       });
       map.addLayer({
         id: 'trail-hit',
@@ -391,6 +422,18 @@ export function TrailMap() {
           'text-halo-width': 4,
         },
       });
+      // ring around POIs hovered from a day card (e.g. lunch options)
+      map.addLayer({
+        id: 'poi-highlight',
+        type: 'circle',
+        source: 'poi-highlight',
+        paint: {
+          'circle-radius': 10,
+          'circle-color': 'rgba(0,0,0,0)',
+          'circle-stroke-color': AMBER,
+          'circle-stroke-width': 3,
+        },
+      });
 
       // click: POI -> popup; near-trail -> add stop
       map.on('click', (e: MapMouseEvent) => {
@@ -456,6 +499,22 @@ export function TrailMap() {
     };
     (map.getSource('segments') as GeoJSONSource)?.setData(walked);
     (map.getSource('segments-skipped') as GeoJSONSource)?.setData(skippedFc);
+    // routed spurs to off-trail lodging picks
+    (map.getSource('detours') as GeoJSONSource)?.setData({
+      type: 'FeatureCollection',
+      features: stops.flatMap(s => {
+        const p = s.lodgingId ? POIS.find(x => x.id === s.lodgingId) : null;
+        return p?.detour
+          ? [
+              {
+                type: 'Feature' as const,
+                properties: {},
+                geometry: { type: 'LineString' as const, coordinates: p.detour.coords },
+              },
+            ]
+          : [];
+      }),
+    });
     (map.getSource('stops') as GeoJSONSource)?.setData({
       type: 'FeatureCollection',
       features: stops.map(s => ({
@@ -532,6 +591,27 @@ export function TrailMap() {
     };
     (map.getSource('pois') as GeoJSONSource)?.setData(fc);
   }, [showPois, ready]);
+
+  // ring-highlight POIs hovered from a day card
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource('poi-highlight') as GeoJSONSource)?.setData({
+      type: 'FeatureCollection',
+      features: (hoverPois ?? []).flatMap(id => {
+        const p = POIS.find(x => x.id === id);
+        return p
+          ? [
+              {
+                type: 'Feature' as const,
+                properties: {},
+                geometry: { type: 'Point' as const, coordinates: [p.lon, p.lat] },
+              },
+            ]
+          : [];
+      }),
+    });
+  }, [hoverPois, ready]);
 
   // fly to a segment when a day is selected / "show on map" is pressed
   useEffect(() => {
