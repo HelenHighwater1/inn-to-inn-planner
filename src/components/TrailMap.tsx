@@ -436,6 +436,7 @@ export function TrailMap() {
 
       // click: POI -> popup; near-trail -> add stop
       map.on('click', (e: MapMouseEvent) => {
+        if ((e.originalEvent.target as Element).closest('.stop-marker')) return;
         const poiHits = map.queryRenderedFeatures(e.point, {
           layers: ['poi-towns', 'poi-lodging', 'poi-food', 'poi-distillery', 'poi-distillery-labels'],
         });
