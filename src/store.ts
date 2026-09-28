@@ -15,7 +15,7 @@ export interface Extra {
 }
 
 interface PlannerState {
-  stops: Stop[]; // sorted by trailIdx; first/last are the trip endpoints
+  stops: Stop[]; // in walking order (trailIdx, descending when reversed); first/last are the trip endpoints
   restAt: Record<string, number>; // stop id -> rest days (extra nights) on arrival
   skipped: Set<string>; // segment keys done by cab
   extras: Record<string, Extra[]>; // day key ("idA>idB" or "rest:{id}") -> visits/notes
@@ -99,6 +99,9 @@ interface Persisted {
 }
 const LS_KEY = 'speyside-itinerary-v1';
 
+const trailOrder = (reversed: boolean) => (a: Stop, b: Stop) =>
+  reversed ? b.trailIdx - a.trailIdx : a.trailIdx - b.trailIdx;
+
 function serialize(s: PlannerState): Persisted {
   return {
     s: s.stops.map(st => [+st.trailIdx.toFixed(1), st.name, st.kind, st.lodgingId]),
@@ -141,7 +144,7 @@ function loadInitial(): Pick<
         kind: kind as Stop['kind'],
         lodgingId: lodgingId || undefined,
       }))
-      .sort((a, b) => a.trailIdx - b.trailIdx);
+      .sort(trailOrder(blob.d === 1));
     const restAt: Record<string, number> = Array.isArray(blob.r)
       ? Object.fromEntries(blob.r.map(id => [id, 1]))
       : (blob.r ?? {});
@@ -199,7 +202,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     const stop = poi ? makeStopFromPoi(poi) : makeStop(fracIdx, get().imperial);
     set(s => {
       if (s.stops.some(x => x.id === stop.id)) return s;
-      return { stops: [...s.stops, stop].sort((a, b) => a.trailIdx - b.trailIdx) };
+      return { stops: [...s.stops, stop].sort(trailOrder(s.reversed)) };
     });
   },
 
@@ -209,7 +212,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
       const others = s.stops.filter(x => x.id !== id);
       // keep identity id so the dragged marker stays associated
       const moved: Stop = { ...snapped, id };
-      return { stops: [...others, moved].sort((a, b) => a.trailIdx - b.trailIdx) };
+      return { stops: [...others, moved].sort(trailOrder(s.reversed)) };
     });
   },
 

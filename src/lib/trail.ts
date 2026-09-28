@@ -93,15 +93,18 @@ export function trailSlice(fromIdx: number, toIdx: number): [number, number][] {
   return pts;
 }
 
-/** Sum of positive elevation deltas between fractional indices (elevation already smoothed). */
-export function gainBetween(fromIdx: number, toIdx: number): number {
+/** Ascent and descent walking from fromIdx to toIdx, in that direction (elevation already smoothed). */
+export function climbBetween(fromIdx: number, toIdx: number): { gainM: number; lossM: number } {
   const lo = Math.min(fromIdx, toIdx);
   const hi = Math.max(fromIdx, toIdx);
-  let gain = 0;
+  let up = 0;
+  let down = 0;
   for (let i = Math.max(1, Math.ceil(lo)); i <= Math.floor(hi); i++) {
-    gain += Math.max(0, TRAIL[i].ele - TRAIL[i - 1].ele);
+    const d = TRAIL[i].ele - TRAIL[i - 1].ele;
+    if (d > 0) up += d;
+    else down -= d;
   }
-  return gain;
+  return fromIdx <= toIdx ? { gainM: up, lossM: down } : { gainM: down, lossM: up };
 }
 
 /** Named towns + accommodation near the trail — the snap targets for stop pins. */

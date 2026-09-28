@@ -79,6 +79,7 @@ export function ItineraryTable() {
 
   const walkKm = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.distKm : s), 0);
   const gainM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.gainM : s), 0);
+  const lossM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.lossM : s), 0);
 
   // each day ends with a night (walk/cab days at seg.to; a rest day adds another at the same stop)
   let nights = 0;
@@ -169,6 +170,10 @@ export function ItineraryTable() {
             <div className="stat-val">{fmtM(gainM, imperial)}</div>
           </div>
           <div className="stat">
+            <div className="stat-label">Descent</div>
+            <div className="stat-val">{fmtM(lossM, imperial)}</div>
+          </div>
+          <div className="stat">
             <div className="stat-label">Nights booked</div>
             <div className="stat-val">
               {booked} <span className="stat-of">of {nights}</span>
@@ -177,7 +182,7 @@ export function ItineraryTable() {
         </div>
         <div className="side-summary-compact">
           <span>
-            {fmtKm(walkKm, imperial)} · {fmtM(gainM, imperial)} climbing
+            {fmtKm(walkKm, imperial)} · ↑{fmtM(gainM, imperial)} ↓{fmtM(lossM, imperial)}
           </span>
           <span className="nights-pill">
             {booked} of {nights} nights booked
@@ -284,7 +289,7 @@ export function ItineraryTable() {
                   <div className="day-meta">
                     <span className="meta">
                       {ICONS.mountain}
-                      {isCab ? '—' : gain(seg.gainM)}
+                      {isCab ? '—' : `↑${gain(seg.gainM)} ↓${gain(seg.lossM)}`}
                     </span>
                     {isCab ? (
                       <span className="meta lunch">{ICONS.utensils}By taxi</span>
@@ -373,6 +378,7 @@ export function PrintSheet() {
   const days = deriveDays(stops, restAt, skipped);
   const walkKm = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.distKm : s), 0);
   const gainM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.gainM : s), 0);
+  const lossM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.lossM : s), 0);
   const poi = (id?: string) => (id ? (POIS.find(p => p.id === id) ?? null) : null);
   const exLabels = (key: string) =>
     (extras[key] ?? []).map(e => poi(e.poiId)?.name ?? e.text).filter((x): x is string => !!x);
@@ -389,7 +395,8 @@ export function PrintSheet() {
       <h1>Speyside Way — inn-to-inn itinerary</h1>
       <p className="ps-sub">
         {reversed ? 'Newtonmore → Buckie (hills to sea)' : 'Buckie → Newtonmore (sea to hills)'} ·{' '}
-        {days.length} days · {fmtKm(walkKm, imperial)} walking · {fmtM(gainM, imperial)} climbing
+        {days.length} days · {fmtKm(walkKm, imperial)} walking · {fmtM(gainM, imperial)} climbing ·{' '}
+        {fmtM(lossM, imperial)} descent
       </p>
       {days.map((d, i) => {
         if (d.type === 'rest') {
@@ -424,7 +431,7 @@ export function PrintSheet() {
             <p>
               {isCab
                 ? `By taxi ≈${fmtKm(seg.cabKm, imperial)}`
-                : `${fmtKm(seg.distKm, imperial)} walking · ${fmtM(seg.gainM, imperial)} climbing`}
+                : `${fmtKm(seg.distKm, imperial)} walking · ${fmtM(seg.gainM, imperial)} climbing · ${fmtM(seg.lossM, imperial)} descent`}
             </p>
             {lunch.length > 0 && (
               <p>Lunch options: {lunch.map(p => p.name).filter(Boolean).join(', ')}</p>
