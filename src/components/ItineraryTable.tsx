@@ -114,7 +114,12 @@ export function ItineraryTable() {
         {adding === key ? (
           <div className="extra-add">
             {fresh.map(p => (
-              <button key={p.id} className="extra-sugg" onClick={() => addExtra(key, { poiId: p.id })}>
+              <button
+                key={p.id}
+                className="extra-sugg"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => addExtra(key, { poiId: p.id })}
+              >
                 + {p.name}
               </button>
             ))}
