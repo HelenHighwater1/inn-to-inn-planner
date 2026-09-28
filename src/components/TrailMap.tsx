@@ -436,7 +436,13 @@ export function TrailMap() {
 
       // click: POI -> popup; near-trail -> add stop
       map.on('click', (e: MapMouseEvent) => {
-        if ((e.originalEvent.target as Element).closest('.stop-marker')) return;
+        // pin clicks reach the map too; handle them here so the popup's close-on-click skips this event
+        const pin = (e.originalEvent.target as Element).closest<HTMLElement>('.stop-marker');
+        if (pin) {
+          const cur = usePlanner.getState().stops.find(x => x.id === pin.dataset.id);
+          if (cur) openStopPopup(map, cur);
+          return;
+        }
         const poiHits = map.queryRenderedFeatures(e.point, {
           layers: ['poi-towns', 'poi-lodging', 'poi-food', 'poi-distillery', 'poi-distillery-labels'],
         });
@@ -551,11 +557,7 @@ export function TrailMap() {
         m = new Marker({ element: el })
           .setLngLat([pos.lon, pos.lat])
           .addTo(map);
-        const id = stop.id;
-        el.addEventListener('click', () => {
-          const cur = usePlanner.getState().stops.find(x => x.id === id);
-          if (cur) openStopPopup(map, cur);
-        });
+        el.dataset.id = stop.id;
         markers.set(stop.id, m);
       } else {
         m.setLngLat([pos.lon, pos.lat]);
