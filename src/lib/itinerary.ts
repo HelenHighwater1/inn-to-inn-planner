@@ -1,4 +1,4 @@
-import { gainBetween, kmAt, positionAt, type Stop } from './trail';
+import { climbBetween, kmAt, positionAt, type Stop } from './trail';
 
 export interface Segment {
   key: string; // "idA>idB"
@@ -7,6 +7,7 @@ export interface Segment {
   skipped: boolean;
   distKm: number;
   gainM: number;
+  lossM: number;
   cabKm: number; // straight-line distance (approx cab distance when skipped)
 }
 
@@ -38,7 +39,7 @@ export function deriveSegments(stops: Stop[], skipped: Set<string>): Segment[] {
       to,
       skipped: skipped.has(key),
       distKm: Math.abs(kmAt(to.trailIdx) - kmAt(from.trailIdx)),
-      gainM: gainBetween(from.trailIdx, to.trailIdx),
+      ...climbBetween(from.trailIdx, to.trailIdx),
       cabKm: haversineKm(positionAt(from.trailIdx), positionAt(to.trailIdx)),
     });
   }

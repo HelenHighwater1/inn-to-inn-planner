@@ -644,14 +644,14 @@ aside {
 
 .stat-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--card);
 }
 
 .stat {
-  padding: 12px 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -668,7 +668,8 @@ aside {
 
 .stat-val {
   font-family: var(--serif);
-  font-size: 22px;
+  font-size: 20px;
+  white-space: nowrap;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
