@@ -39,13 +39,6 @@ const ICONS = {
       <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z" />
     </svg>
   ),
-  bottle: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9.5 2h5" />
-      <path d="M10 2v4.3L7.4 8.9a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.9a2 2 0 0 0-.4-1.2L14 6.3V2" />
-      <path d="M7 14h10" />
-    </svg>
-  ),
   close: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
       <path d="M18 6 6 18" />
@@ -211,13 +204,6 @@ export function ItineraryTable() {
                     </div>
                     <div className="day-meta">
                       <span className="meta">Put your feet up</span>
-                      {dists.length > 0 && (
-                        <span className="meta distillery">
-                          {ICONS.bottle}
-                          {dists.slice(0, 2).map(p => p.name).join(', ')}
-                          {dists.length > 2 ? ` +${dists.length - 2}` : ''}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </button>
@@ -303,13 +289,6 @@ export function ItineraryTable() {
                       <span className="meta" title="Walking distance from the trail to tonight's lodging">
                         {ICONS.bed}
                         {fmtKm(lodge.detour.distM / 1000, imperial)} each way off trail
-                      </span>
-                    )}
-                    {dists.length > 0 && (
-                      <span className="meta distillery">
-                        {ICONS.bottle}
-                        {dists.slice(0, 2).map(p => p.name).join(', ')}
-                        {dists.length > 2 ? ` +${dists.length - 2}` : ''}
                       </span>
                     )}
                     {tags.map(t => (

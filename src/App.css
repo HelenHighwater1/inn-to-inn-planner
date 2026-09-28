@@ -297,22 +297,6 @@ aside {
   z-index: 2;
 }
 
-.map-hint {
-  position: absolute;
-  left: 20px;
-  bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 14px;
-  background: rgba(251, 249, 244, 0.94);
-  border-radius: 999px;
-  font-size: 12.5px;
-  color: #3e4944;
-  box-shadow: 0 1px 2px rgba(31, 42, 36, 0.08);
-  z-index: 2;
-}
-
 /* maplibre chrome */
 .maplibregl-ctrl-attrib {
   font-size: 10.5px;
@@ -362,7 +346,7 @@ aside {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: grab;
+  cursor: pointer;
   box-shadow: 0 1px 4px rgba(31, 42, 36, 0.3);
 }
 
@@ -1151,10 +1135,6 @@ aside {
 
   .map-fit {
     display: flex;
-  }
-
-  .map-hint {
-    display: none;
   }
 
   aside {

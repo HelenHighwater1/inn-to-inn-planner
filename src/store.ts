@@ -31,7 +31,6 @@ interface PlannerState {
   openStop: (id: string) => void;
   setLodging: (stopId: string, poiId: string | null) => void;
   addStop: (fracIdx: number, poi?: Poi) => void;
-  moveStop: (id: string, fracIdx: number) => void;
   removeStop: (id: string) => void;
   setRestDays: (stopId: string, days: number) => void;
   addExtra: (key: string, extra: Extra) => void;
@@ -203,16 +202,6 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     set(s => {
       if (s.stops.some(x => x.id === stop.id)) return s;
       return { stops: [...s.stops, stop].sort(trailOrder(s.reversed)) };
-    });
-  },
-
-  moveStop: (id, fracIdx) => {
-    const snapped = makeStop(fracIdx, get().imperial);
-    set(s => {
-      const others = s.stops.filter(x => x.id !== id);
-      // keep identity id so the dragged marker stays associated
-      const moved: Stop = { ...snapped, id };
-      return { stops: [...others, moved].sort(trailOrder(s.reversed)) };
     });
   },
 
