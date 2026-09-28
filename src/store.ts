@@ -163,7 +163,7 @@ function loadInitial(): Pick<
     skipped: new Set(),
     extras: {},
     reversed: false,
-    imperial: false,
+    imperial: true,
   };
 }
 
@@ -174,7 +174,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   selected: null,
   focusSeg: null,
   focusStop: null,
-  showPois: { accommodation: true, food: false, town: true, distillery: true },
+  showPois: { accommodation: true, food: true, town: false, distillery: false },
   hoverPois: null,
 
   // selecting a day card: highlight on the map, fly to the segment,

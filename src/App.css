@@ -674,11 +674,6 @@ aside {
   font-variant-numeric: tabular-nums;
 }
 
-.stat-of {
-  font-size: 15px;
-  color: var(--muted);
-}
-
 .side-summary-compact {
   display: none;
 }
@@ -989,6 +984,15 @@ aside {
   display: none;
 }
 
+.print-map-render {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 960px;
+  height: 600px;
+  pointer-events: none;
+}
+
 @media print {
   .app {
     height: auto;
@@ -1047,6 +1051,30 @@ aside {
 
   .print-sheet ul {
     padding-left: 18px;
+  }
+
+  .print-map-render {
+    display: none;
+  }
+
+  .print-sheet .ps-map {
+    margin: 18px 0 0;
+    break-inside: avoid;
+  }
+
+  .ps-map img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .ps-map figcaption {
+    margin-top: 3px;
+    font-size: 9px;
+    color: #666;
+    text-align: right;
   }
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePlanner } from '../store';
 import { deriveDays } from '../lib/itinerary';
+import { PrintMap } from './PrintMap';
 import { distilleriesNear, distilleryPois, fmtKm, fmtM, lunchPois, POIS, type Poi } from '../lib/trail';
 
 const ICONS = {
@@ -82,13 +83,7 @@ export function ItineraryTable() {
   const lossM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.lossM : s), 0);
 
   // each day ends with a night (walk/cab days at seg.to; a rest day adds another at the same stop)
-  let nights = 0;
-  let booked = 0;
-  for (const d of days) {
-    nights++;
-    const stop = d.type === 'rest' ? d.stop : d.seg.to;
-    if (stop.lodgingId) booked++;
-  }
+  const nights = days.length;
 
   const walkSegs = days.flatMap(d => (d.type === 'walk' ? [d.seg] : []));
   const maxKm = Math.max(0, ...walkSegs.map(s => s.distKm));
@@ -174,10 +169,8 @@ export function ItineraryTable() {
             <div className="stat-val">{fmtM(lossM, imperial)}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Nights booked</div>
-            <div className="stat-val">
-              {booked} <span className="stat-of">of {nights}</span>
-            </div>
+            <div className="stat-label">Nights</div>
+            <div className="stat-val">{nights}</div>
           </div>
         </div>
         <div className="side-summary-compact">
@@ -185,7 +178,7 @@ export function ItineraryTable() {
             {fmtKm(walkKm, imperial)} · ↑{fmtM(gainM, imperial)} ↓{fmtM(lossM, imperial)}
           </span>
           <span className="nights-pill">
-            {booked} of {nights} nights booked
+            {nights} night{nights === 1 ? '' : 's'}
           </span>
         </div>
       </div>
@@ -447,6 +440,7 @@ export function PrintSheet() {
           </section>
         );
       })}
+      <PrintMap />
     </div>
   );
 }
