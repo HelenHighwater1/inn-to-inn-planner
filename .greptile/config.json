@@ -1,0 +1,24 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax", "style"],
+  "autoReview": ["open", "push"],
+  "triggerOnDrafts": false,
+  "ignorePatterns": "node_modules/**\ndist/**\npackage-lock.json\ndata/raw/**",
+  "shouldUpdateDescription": true,
+  "fixWithAI": true,
+  "instructions": "This is a client-only React 19 + TypeScript + Vite app that plans multi-day hikes on the Speyside Way. Maps render with MapLibre GL; shared state lives in the zustand store in src/store.ts. There is no backend. Files under data/ are produced by the fetch pipeline in scripts/*.mjs (OpenStreetMap/Valhalla) or hand-curated. GeoJSON coordinates are always [longitude, latitude] order — flag swapped coordinates. Print output is controlled by print media rules in src/App.css.",
+  "rules": [
+    {
+      "id": "geojson-coord-order",
+      "rule": "GeoJSON and routing code must keep coordinates in [longitude, latitude] order; never swap to [latitude, longitude].",
+      "severity": "high",
+      "scope": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.mjs"]
+    },
+    {
+      "id": "zustand-state",
+      "rule": "Shared UI state should go through the zustand store in src/store.ts rather than prop drilling or new React context.",
+      "severity": "medium",
+      "scope": ["src/**/*.ts", "src/**/*.tsx"]
+    }
+  ]
+}
