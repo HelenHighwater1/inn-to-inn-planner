@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePlanner } from '../store';
 import { deriveDays } from '../lib/itinerary';
+import { PrintMap } from './PrintMap';
 import { distilleriesNear, distilleryPois, fmtKm, fmtM, lunchPois, POIS, type Poi } from '../lib/trail';
 
 const ICONS = {
@@ -36,13 +37,6 @@ const ICONS = {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="10" r="3" />
       <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z" />
-    </svg>
-  ),
-  bottle: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9.5 2h5" />
-      <path d="M10 2v4.3L7.4 8.9a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.9a2 2 0 0 0-.4-1.2L14 6.3V2" />
-      <path d="M7 14h10" />
     </svg>
   ),
   close: (
@@ -82,13 +76,7 @@ export function ItineraryTable() {
   const lossM = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.lossM : s), 0);
 
   // each day ends with a night (walk/cab days at seg.to; a rest day adds another at the same stop)
-  let nights = 0;
-  let booked = 0;
-  for (const d of days) {
-    nights++;
-    const stop = d.type === 'rest' ? d.stop : d.seg.to;
-    if (stop.lodgingId) booked++;
-  }
+  const nights = days.length;
 
   const walkSegs = days.flatMap(d => (d.type === 'walk' ? [d.seg] : []));
   const maxKm = Math.max(0, ...walkSegs.map(s => s.distKm));
@@ -126,7 +114,12 @@ export function ItineraryTable() {
         {adding === key ? (
           <div className="extra-add">
             {fresh.map(p => (
-              <button key={p.id} className="extra-sugg" onClick={() => addExtra(key, { poiId: p.id })}>
+              <button
+                key={p.id}
+                className="extra-sugg"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => addExtra(key, { poiId: p.id })}
+              >
                 + {p.name}
               </button>
             ))}
@@ -174,10 +167,8 @@ export function ItineraryTable() {
             <div className="stat-val">{fmtM(lossM, imperial)}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Nights booked</div>
-            <div className="stat-val">
-              {booked} <span className="stat-of">of {nights}</span>
-            </div>
+            <div className="stat-label">Nights</div>
+            <div className="stat-val">{nights}</div>
           </div>
         </div>
         <div className="side-summary-compact">
@@ -185,7 +176,7 @@ export function ItineraryTable() {
             {fmtKm(walkKm, imperial)} · ↑{fmtM(gainM, imperial)} ↓{fmtM(lossM, imperial)}
           </span>
           <span className="nights-pill">
-            {booked} of {nights} nights booked
+            {nights} night{nights === 1 ? '' : 's'}
           </span>
         </div>
       </div>
@@ -218,13 +209,6 @@ export function ItineraryTable() {
                     </div>
                     <div className="day-meta">
                       <span className="meta">Put your feet up</span>
-                      {dists.length > 0 && (
-                        <span className="meta distillery">
-                          {ICONS.bottle}
-                          {dists.slice(0, 2).map(p => p.name).join(', ')}
-                          {dists.length > 2 ? ` +${dists.length - 2}` : ''}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </button>
@@ -310,13 +294,6 @@ export function ItineraryTable() {
                       <span className="meta" title="Walking distance from the trail to tonight's lodging">
                         {ICONS.bed}
                         {fmtKm(lodge.detour.distM / 1000, imperial)} each way off trail
-                      </span>
-                    )}
-                    {dists.length > 0 && (
-                      <span className="meta distillery">
-                        {ICONS.bottle}
-                        {dists.slice(0, 2).map(p => p.name).join(', ')}
-                        {dists.length > 2 ? ` +${dists.length - 2}` : ''}
                       </span>
                     )}
                     {tags.map(t => (
@@ -447,6 +424,7 @@ export function PrintSheet() {
           </section>
         );
       })}
+      <PrintMap />
     </div>
   );
 }

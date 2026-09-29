@@ -89,7 +89,6 @@ export function TrailMap() {
   const selected = usePlanner(s => s.selected);
   const focusSeg = usePlanner(s => s.focusSeg);
   const focusStop = usePlanner(s => s.focusStop);
-  const moveStop = usePlanner(s => s.moveStop);
   const togglePoi = usePlanner(s => s.togglePoi);
   const hoverPois = usePlanner(s => s.hoverPois);
 
@@ -437,6 +436,13 @@ export function TrailMap() {
 
       // click: POI -> popup; near-trail -> add stop
       map.on('click', (e: MapMouseEvent) => {
+        // pin clicks reach the map too; handle them here so the popup's close-on-click skips this event
+        const pin = (e.originalEvent.target as Element).closest<HTMLElement>('.stop-marker');
+        if (pin) {
+          const cur = usePlanner.getState().stops.find(x => x.id === pin.dataset.id);
+          if (cur) openStopPopup(map, cur);
+          return;
+        }
         const poiHits = map.queryRenderedFeatures(e.point, {
           layers: ['poi-towns', 'poi-lodging', 'poi-food', 'poi-distillery', 'poi-distillery-labels'],
         });
@@ -533,7 +539,7 @@ export function TrailMap() {
     // pins bounding the selected day
     const selBounds = new Set(selected?.split('>') ?? []);
 
-    // sync draggable markers
+    // sync stop markers
     const markers = markersRef.current;
     const ids = new Set(stops.map(s => s.id));
     for (const [id, m] of markers) {
@@ -548,22 +554,10 @@ export function TrailMap() {
       if (!m) {
         const el = document.createElement('div');
         el.className = 'stop-marker';
-        m = new Marker({ element: el, draggable: true })
+        m = new Marker({ element: el })
           .setLngLat([pos.lon, pos.lat])
           .addTo(map);
-        const id = stop.id;
-        let lastDrag = 0;
-        m.on('dragend', () => {
-          lastDrag = Date.now();
-          const ll = m!.getLngLat();
-          const { fracIdx } = nearestOnTrail(ll.lat, ll.lng);
-          moveStop(id, fracIdx);
-        });
-        el.addEventListener('click', () => {
-          if (Date.now() - lastDrag < 250) return; // ignore the click that ends a drag
-          const cur = usePlanner.getState().stops.find(x => x.id === id);
-          if (cur) openStopPopup(map, cur);
-        });
+        el.dataset.id = stop.id;
         markers.set(stop.id, m);
       } else {
         m.setLngLat([pos.lon, pos.lat]);
@@ -575,7 +569,7 @@ export function TrailMap() {
       const lodge = stop.lodgingId ? POIS.find(p => p.id === stop.lodgingId)?.name : null;
       el.title = lodge ? `${stop.name} — ${lodge}` : stop.name;
     });
-  }, [stops, skipped, restAt, selected, ready, moveStop]);
+  }, [stops, skipped, restAt, selected, ready]);
 
   // update POI layer when toggles change
   useEffect(() => {
@@ -720,15 +714,6 @@ export function TrailMap() {
           <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
         </svg>
       </button>
-
-      <div className="map-hint">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 16v-4" />
-          <path d="M12 8h.01" />
-        </svg>
-        <span>Drag a numbered pin to move a stop · Click the trail to add one · Click any marker for details</span>
-      </div>
     </div>
   );
 }

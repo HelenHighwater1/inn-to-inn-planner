@@ -297,22 +297,6 @@ aside {
   z-index: 2;
 }
 
-.map-hint {
-  position: absolute;
-  left: 20px;
-  bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 14px;
-  background: rgba(251, 249, 244, 0.94);
-  border-radius: 999px;
-  font-size: 12.5px;
-  color: #3e4944;
-  box-shadow: 0 1px 2px rgba(31, 42, 36, 0.08);
-  z-index: 2;
-}
-
 /* maplibre chrome */
 .maplibregl-ctrl-attrib {
   font-size: 10.5px;
@@ -362,7 +346,7 @@ aside {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: grab;
+  cursor: pointer;
   box-shadow: 0 1px 4px rgba(31, 42, 36, 0.3);
 }
 
@@ -672,11 +656,6 @@ aside {
   white-space: nowrap;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-
-.stat-of {
-  font-size: 15px;
-  color: var(--muted);
 }
 
 .side-summary-compact {
@@ -989,6 +968,15 @@ aside {
   display: none;
 }
 
+.print-map-render {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 960px;
+  height: 600px;
+  pointer-events: none;
+}
+
 @media print {
   .app {
     height: auto;
@@ -1047,6 +1035,30 @@ aside {
 
   .print-sheet ul {
     padding-left: 18px;
+  }
+
+  .print-map-render {
+    display: none;
+  }
+
+  .print-sheet .ps-map {
+    margin: 18px 0 0;
+    break-inside: avoid;
+  }
+
+  .ps-map img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .ps-map figcaption {
+    margin-top: 3px;
+    font-size: 9px;
+    color: #666;
+    text-align: right;
   }
 }
 
@@ -1123,10 +1135,6 @@ aside {
 
   .map-fit {
     display: flex;
-  }
-
-  .map-hint {
-    display: none;
   }
 
   aside {
