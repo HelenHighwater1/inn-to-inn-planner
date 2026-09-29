@@ -387,19 +387,6 @@ aside {
   }
 }
 
-/* ---------- stop label (pin click) ---------- */
-.stop-label-popup .maplibregl-popup-content {
-  padding: 4px 12px;
-  border-radius: 999px;
-}
-
-.stop-label {
-  font-family: var(--serif);
-  font-size: 15px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
 /* ---------- poi popup ---------- */
 .poi-popup {
   font-size: 13px;

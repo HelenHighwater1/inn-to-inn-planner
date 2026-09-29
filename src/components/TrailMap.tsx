@@ -257,18 +257,6 @@ export function TrailMap() {
     el.appendChild(box);
   }
 
-  function openStopLabel(map: MLMap, stop: Stop) {
-    popupRef.current?.remove();
-    const el = document.createElement('div');
-    el.className = 'stop-label';
-    el.textContent = stop.name;
-    const pos = positionAt(stop.trailIdx);
-    popupRef.current = new Popup({ closeButton: false, className: 'stop-label-popup', offset: 18, maxWidth: 'none' })
-      .setLngLat([pos.lon, pos.lat])
-      .setDOMContent(el)
-      .addTo(map);
-  }
-
   // init map once
   useEffect(() => {
     if (!ref.current) return;
@@ -668,7 +656,7 @@ export function TrailMap() {
     );
   }, [focusSeg, ready]);
 
-  // zoom into a stop's town and label it (pin click or lodging pill); hotels are picked from their own popups
+  // zoom into a stop's town (pin click or lodging pill); hotels are picked from their own popups
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !focusStop) return;
@@ -680,7 +668,7 @@ export function TrailMap() {
       zoom: Math.max(map.getZoom(), 13.5),
       duration: 800,
     });
-    openStopLabel(map, stop);
+    popupRef.current?.remove();
   }, [focusStop, ready]);
 
   const chip = (on: boolean) => `map-chip${on ? ' on' : ''}`;

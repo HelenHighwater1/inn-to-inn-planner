@@ -24,7 +24,7 @@ interface PlannerState {
   imperial: boolean;
   selected: string | null; // selected day: segment key "idA>idB" or "rest:{stopId}"
   focusSeg: { key: string; seq: number } | null; // table -> map fly-to request
-  focusStop: { id: string; seq: number } | null; // zoom to a stop + label it
+  focusStop: { id: string; seq: number } | null; // zoom to a stop
   showPois: { accommodation: boolean; food: boolean; town: boolean; distillery: boolean };
   hoverPois: string[] | null; // poi ids to highlight on the map (e.g. lunch hover)
   selectDay: (key: string) => void;
