@@ -24,7 +24,7 @@ interface PlannerState {
   imperial: boolean;
   selected: string | null; // selected day: segment key "idA>idB" or "rest:{stopId}"
   focusSeg: { key: string; seq: number } | null; // table -> map fly-to request
-  focusStop: { id: string; seq: number } | null; // fly to a stop + open its popup
+  focusStop: { id: string; seq: number } | null; // zoom to a stop + label it
   showPois: { accommodation: boolean; food: boolean; town: boolean; distillery: boolean };
   hoverPois: string[] | null; // poi ids to highlight on the map (e.g. lunch hover)
   selectDay: (key: string) => void;
@@ -190,7 +190,12 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     })),
 
   focusSegment: key => set(s => ({ focusSeg: { key, seq: (s.focusSeg?.seq ?? 0) + 1 } })),
-  openStop: id => set(s => ({ focusStop: { id, seq: (s.focusStop?.seq ?? 0) + 1 } })),
+  // zooming to a stop is for choosing where to sleep, so make sure lodging is on the map
+  openStop: id =>
+    set(s => ({
+      focusStop: { id, seq: (s.focusStop?.seq ?? 0) + 1 },
+      showPois: s.showPois.accommodation ? s.showPois : { ...s.showPois, accommodation: true },
+    })),
 
   setLodging: (stopId, poiId) =>
     set(s => ({
