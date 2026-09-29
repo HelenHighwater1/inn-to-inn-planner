@@ -52,6 +52,7 @@ export function ItineraryTable() {
   const restAt = usePlanner(s => s.restAt);
   const skipped = usePlanner(s => s.skipped);
   const extras = usePlanner(s => s.extras);
+  const lunchPick = usePlanner(s => s.lunch);
   const reversed = usePlanner(s => s.reversed);
   const imperial = usePlanner(s => s.imperial);
   const selected = usePlanner(s => s.selected);
@@ -66,6 +67,7 @@ export function ItineraryTable() {
     addExtra,
     removeExtra,
     setHoverPois,
+    setLunch,
   } = usePlanner.getState();
 
   const days = deriveDays(stops, restAt, skipped);
@@ -88,11 +90,27 @@ export function ItineraryTable() {
     `${(imperial ? Math.round(m * 3.28084) : Math.round(m)).toLocaleString('en-US')} ${imperial ? 'ft' : 'm'}`;
 
   // visits/notes pinned to a day — chips + suggestions + free-text input
-  const extrasBlock = (key: string, sugg: Poi[]) => {
+  const extrasBlock = (key: string, sugg: Poi[], lunchPoi?: Poi | null) => {
     const ex = extras[key] ?? [];
     const fresh = sugg.filter(p => p.name && !ex.some(e => e.poiId === p.id)).slice(0, 5);
+    const lunchName = lunchPoi?.name ?? lunchPoi?.subtype.replaceAll('_', ' ');
     return (
       <div className="day-extras">
+        {lunchPoi && (
+          <span className="extra-chip lunch-chip">
+            {ICONS.utensils}
+            {lunchPoi.website ? (
+              <a href={lunchPoi.website} target="_blank" rel="noopener noreferrer">
+                Lunch: {lunchName}
+              </a>
+            ) : (
+              `Lunch: ${lunchName}`
+            )}
+            <button aria-label={`Remove lunch at ${lunchName}`} onClick={() => setLunch(key, null)}>
+              {ICONS.close}
+            </button>
+          </span>
+        )}
         {ex.map((e, ei) => {
           const poi = e.poiId ? POIS.find(p => p.id === e.poiId) : null;
           const label = poi?.name ?? e.text ?? '';
@@ -244,6 +262,7 @@ export function ItineraryTable() {
             : distilleryPois(seg.from.trailIdx, seg.to.trailIdx).filter(p => p.name && p.popular);
           const interior = seg.to.id !== lastStopId;
           const lodge = seg.to.lodgingId ? POIS.find(p => p.id === seg.to.lodgingId) : null;
+          const lunchPoi = isCab ? null : lunch.find(p => p.id === lunchPick[seg.key]);
 
           const tags: string[] = [];
           if (!isCab && seg.distKm === maxKm) tags.push('Longest');
@@ -254,7 +273,7 @@ export function ItineraryTable() {
               <button
                 className="day-main"
                 aria-pressed={sel}
-                onClick={() => selectDay(seg.key, seg.to.id)}
+                onClick={() => selectDay(seg.key)}
               >
                 <div className="day-badge">{n}</div>
                 <div className="day-body">
@@ -304,7 +323,7 @@ export function ItineraryTable() {
                   </div>
                 </div>
               </button>
-              {extrasBlock(seg.key, dists)}
+              {extrasBlock(seg.key, dists, lunchPoi)}
               <div className="day-actions">
                 <button
                   className={`lodge-pill${lodge ? ' set' : ''}`}
@@ -349,6 +368,7 @@ export function PrintSheet() {
   const restAt = usePlanner(s => s.restAt);
   const skipped = usePlanner(s => s.skipped);
   const extras = usePlanner(s => s.extras);
+  const lunchPick = usePlanner(s => s.lunch);
   const reversed = usePlanner(s => s.reversed);
   const imperial = usePlanner(s => s.imperial);
 
@@ -399,6 +419,7 @@ export function PrintSheet() {
         const { seg } = d;
         const isCab = d.type === 'cab';
         const lunch = isCab ? [] : lunchPois(seg.from.trailIdx, seg.to.trailIdx);
+        const lunchPoi = lunch.find(p => p.id === lunchPick[seg.key]);
         const ex = exLabels(seg.key);
         return (
           <section key={seg.key}>
@@ -410,8 +431,13 @@ export function PrintSheet() {
                 ? `By taxi ≈${fmtKm(seg.cabKm, imperial)}`
                 : `${fmtKm(seg.distKm, imperial)} walking · ${fmtM(seg.gainM, imperial)} climbing · ${fmtM(seg.lossM, imperial)} descent`}
             </p>
-            {lunch.length > 0 && (
-              <p>Lunch options: {lunch.map(p => p.name).filter(Boolean).join(', ')}</p>
+            {lunchPoi ? (
+              <p>
+                Lunch: {lunchPoi.name ?? lunchPoi.subtype.replaceAll('_', ' ')}
+                {lunchPoi.website ? ` — ${lunchPoi.website}` : ''}
+              </p>
+            ) : (
+              lunch.length > 0 && <p>Lunch options: {lunch.map(p => p.name).filter(Boolean).join(', ')}</p>
             )}
             {ex.length > 0 && (
               <ul>

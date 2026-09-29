@@ -13,6 +13,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   accommodationNear,
   fmtDistM,
+  kmAt,
+  lunchPois,
   nearestOnTrail,
   POIS,
   positionAt,
@@ -71,6 +73,44 @@ function dayNumBySeg(): Map<string, number> {
   return map;
 }
 
+/** Lodging within this along-trail distance of a stop is offered as that night's lodging, not a new stop. */
+const LODGING_SNAP_KM = 3;
+
+function nearestStop(stops: Stop[], trailIdx: number, maxKm: number): Stop | null {
+  const km = kmAt(trailIdx);
+  let best: Stop | null = null;
+  let bestD = maxKm;
+  for (const s of stops) {
+    const d = Math.abs(kmAt(s.trailIdx) - km);
+    if (d < bestD) {
+      bestD = d;
+      best = s;
+    }
+  }
+  return best;
+}
+
+/** "night 2", "nights 2–3", or "the night before day 1" for the trailhead. */
+function nightLabel(stopId: string): string {
+  const { stops, restAt, skipped } = usePlanner.getState();
+  const nights: number[] = [];
+  deriveDays(stops, restAt, skipped).forEach((d, i) => {
+    if ((d.type === 'rest' ? d.stop.id : d.seg.to.id) === stopId) nights.push(i + 1);
+  });
+  if (!nights.length) return 'the night before day 1';
+  return nights.length === 1 ? `night ${nights[0]}` : `nights ${nights[0]}–${nights[nights.length - 1]}`;
+}
+
+/** The walked leg whose middle 50% contains this food POI (i.e. it's a lunch option for that day). */
+function lunchLeg(poiId: string) {
+  const { stops, skipped } = usePlanner.getState();
+  return (
+    deriveSegments(stops, skipped).find(
+      s => !s.skipped && lunchPois(s.from.trailIdx, s.to.trailIdx).some(p => p.id === poiId),
+    ) ?? null
+  );
+}
+
 const ICONS = {
   bed: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>',
   close:
@@ -81,6 +121,7 @@ export function TrailMap() {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
+  const popupRef = useRef<Popup | null>(null);
   const [ready, setReady] = useState(false);
   const stops = usePlanner(s => s.stops);
   const restAt = usePlanner(s => s.restAt);
@@ -117,20 +158,46 @@ export function TrailMap() {
       body.appendChild(a);
     }
     el.appendChild(body);
-    if (poi.kind === 'accommodation' || poi.kind === 'town') {
+
+    const st = usePlanner.getState();
+    const action = (label: string, secondary: boolean, run: () => void) => {
       const btn = document.createElement('button');
-      btn.className = 'poi-add';
-      btn.textContent = 'Add as overnight stop';
+      btn.className = `poi-add${secondary ? ' secondary' : ''}`;
+      btn.textContent = label;
       btn.onclick = () => {
-        usePlanner.getState().addStop(poi.trailIdx, poi);
+        run();
         popup.remove();
       };
       el.appendChild(btn);
+    };
+    const addStop = () => st.addStop(poi.trailIdx, poi);
+    if (poi.kind === 'accommodation') {
+      const stop = nearestStop(st.stops, poi.trailIdx, LODGING_SNAP_KM);
+      if (!stop) action('Add as overnight stop', false, addStop);
+      else if (stop.lodgingId === poi.id)
+        action(`Remove as lodging for ${nightLabel(stop.id)}`, true, () => st.setLodging(stop.id, null));
+      else
+        action(`Stay here for ${nightLabel(stop.id)} · ${stop.name}`, false, () =>
+          st.setLodging(stop.id, poi.id),
+        );
+    } else if (poi.kind === 'town') {
+      action('Add as overnight stop', false, addStop);
+    } else if (poi.kind === 'food') {
+      const leg = lunchLeg(poi.id);
+      if (leg) {
+        const day = dayNumBySeg().get(leg.key);
+        if (st.lunch[leg.key] === poi.id)
+          action(`Remove as lunch for day ${day}`, true, () => st.setLunch(leg.key, null));
+        else action(`Choose for lunch on day ${day}`, false, () => st.setLunch(leg.key, poi.id));
+      }
     }
+
+    popupRef.current?.remove();
     const popup = new Popup({ closeButton: true, maxWidth: '280px' })
       .setLngLat([poi.lon, poi.lat])
       .setDOMContent(el)
       .addTo(map);
+    popupRef.current = popup;
   }
 
   function buildLodgeList(list: HTMLElement, stop: Stop, lodgeRow: HTMLElement) {
@@ -231,9 +298,11 @@ export function TrailMap() {
       </div>
       <div class="lodge-list"></div>`;
 
+    popupRef.current?.remove();
     const popup = new Popup({ closeButton: false, maxWidth: '280px' });
     const pos = positionAt(stop.trailIdx);
     popup.setLngLat([pos.lon, pos.lat]).setDOMContent(el).addTo(map);
+    popupRef.current = popup;
 
     el.querySelector('.sp-close')!.addEventListener('click', () => popup.remove());
     el.querySelectorAll<HTMLButtonElement>('.sp-nights .n-btn').forEach(b =>
@@ -439,8 +508,7 @@ export function TrailMap() {
         // pin clicks reach the map too; handle them here so the popup's close-on-click skips this event
         const pin = (e.originalEvent.target as Element).closest<HTMLElement>('.stop-marker');
         if (pin) {
-          const cur = usePlanner.getState().stops.find(x => x.id === pin.dataset.id);
-          if (cur) openStopPopup(map, cur);
+          if (pin.dataset.id) usePlanner.getState().openStop(pin.dataset.id);
           return;
         }
         const poiHits = map.queryRenderedFeatures(e.point, {
@@ -616,6 +684,7 @@ export function TrailMap() {
       usePlanner.getState().skipped,
     ).find(s => s.key === focusSeg.key);
     if (!seg) return;
+    popupRef.current?.remove();
     const coords = trailSlice(seg.from.trailIdx, seg.to.trailIdx);
     const lons = coords.map(c => c[0]);
     const lats = coords.map(c => c[1]);
@@ -630,20 +699,20 @@ export function TrailMap() {
     );
   }, [focusSeg, ready]);
 
-  // fly to a stop + open its lodging picker (pin click or card click)
+  // zoom into a stop's town + open its lodging picker (pin click or card click);
+  // the stop sits below centre so the popup above it doesn't cover the town
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !focusStop) return;
     const stop = usePlanner.getState().stops.find(s => s.id === focusStop.id);
     if (!stop) return;
-    if (focusStop.pan) {
-      const pos = positionAt(stop.trailIdx);
-      map.easeTo({
-        center: [pos.lon, pos.lat],
-        zoom: Math.max(map.getZoom(), 12.5),
-        duration: 700,
-      });
-    }
+    const pos = positionAt(stop.trailIdx);
+    map.easeTo({
+      center: [pos.lon, pos.lat],
+      zoom: Math.max(map.getZoom(), 13.5),
+      offset: [0, Math.round(map.getContainer().clientHeight * 0.2)],
+      duration: 800,
+    });
     openStopPopup(map, stop);
   }, [focusStop, ready]);
 

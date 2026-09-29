@@ -361,6 +361,30 @@ aside {
   background: var(--amber);
   border-color: #fffdf8;
   color: #ffffff;
+  animation: selbound-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes selbound-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(196, 127, 30, 0.28),
+      0 0 14px 6px rgba(196, 127, 30, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 9px rgba(196, 127, 30, 0.14),
+      0 0 26px 12px rgba(196, 127, 30, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stop-marker.selbound {
+    animation: none;
+    box-shadow:
+      0 0 0 5px rgba(196, 127, 30, 0.25),
+      0 0 18px 8px rgba(196, 127, 30, 0.3);
+  }
 }
 
 /* ---------- stop popup ---------- */
@@ -579,15 +603,24 @@ aside {
 }
 
 .poi-add {
-  height: 34px;
-  padding: 0 12px;
+  display: block;
+  min-height: 34px;
+  padding: 7px 12px;
   border: 0;
   border-radius: 10px;
   background: var(--forest);
   color: var(--panel);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
   cursor: pointer;
+}
+
+.poi-add.secondary {
+  background: transparent;
+  color: var(--forest);
+  box-shadow: inset 0 0 0 1px var(--line-btn);
 }
 
 .muted {
@@ -910,6 +943,19 @@ aside {
 
 .extra-chip button:hover {
   background: rgba(90, 59, 105, 0.14);
+}
+
+.extra-chip.lunch-chip {
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+
+.extra-chip.lunch-chip a {
+  border-bottom-color: var(--amber-text);
+}
+
+.extra-chip.lunch-chip button:hover {
+  background: rgba(143, 90, 18, 0.14);
 }
 
 .extra-add-btn {
