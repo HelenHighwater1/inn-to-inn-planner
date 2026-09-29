@@ -639,6 +639,12 @@ export function TrailMap() {
     });
   }, [stops, skipped, restAt, selected, ready]);
 
+  // an open popup's day/night actions are stale once the route changes
+  const routeSig = stops.map(s => s.id).join('>');
+  useEffect(() => {
+    popupRef.current?.remove();
+  }, [routeSig, skipped]);
+
   // update POI layer when toggles change
   useEffect(() => {
     const map = mapRef.current;
