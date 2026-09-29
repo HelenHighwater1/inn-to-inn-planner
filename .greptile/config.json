@@ -2,6 +2,7 @@
   "strictness": 2,
   "commentTypes": ["logic", "syntax", "style"],
   "triggerOnUpdates": true,
+  "statusCheck": true,
   "includeAuthors": ["*"],
   "excludeAuthors": [],
   "ignorePatterns": "node_modules/**\ndist/**\npackage-lock.json\ndata/raw/**",
