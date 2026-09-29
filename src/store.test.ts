@@ -16,6 +16,10 @@ const reloadStore = async () => {
 const stopTuple = (s: Stop) => [s.id, s.trailIdx, s.name, s.kind, s.lodgingId];
 
 beforeEach(() => {
+  // fake timers first: reset() schedules a debounced persistence write 250ms out,
+  // and a real timer firing mid-await (e.g. during a fresh store import) could
+  // clobber a test's fixture hash/localStorage
+  vi.useFakeTimers();
   S().reset();
   localStorage.clear();
   history.replaceState(null, '', '/');
@@ -199,7 +203,6 @@ describe('toggleDirection', () => {
 
 describe('persistence', () => {
   it('round-trips state through the URL hash', async () => {
-    vi.useFakeTimers();
     const key = `${S().stops[0].id}>${S().stops[1].id}`;
     S().setRestDays(S().stops[1].id, 1);
     S().toggleSkip(key);

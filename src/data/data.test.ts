@@ -74,6 +74,11 @@ describe('pois.json', () => {
         expect(c).toHaveLength(2);
         expect(Number.isFinite(c[0])).toBe(true);
         expect(Number.isFinite(c[1])).toBe(true);
+        // GeoJSON order is [lon, lat] — bounds in Speyside catch a swapped pair
+        expect(c[0]).toBeGreaterThan(-5.5);
+        expect(c[0]).toBeLessThan(-2);
+        expect(c[1]).toBeGreaterThan(56);
+        expect(c[1]).toBeLessThan(59);
       }
     }
   });
