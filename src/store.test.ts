@@ -142,19 +142,22 @@ describe('rest days, extras, skip', () => {
 });
 
 describe('selection and focus', () => {
-  it('selectDay sets selection and requests a map focus', () => {
-    S().selectDay('a>b', 'b');
+  it('selectDay sets selection and requests a map focus without opening a stop', () => {
+    const stopBefore = S().focusStop;
+    S().selectDay('a>b');
     expect(S().selected).toBe('a>b');
     expect(S().focusSeg).toEqual({ key: 'a>b', seq: 1 });
-    expect(S().focusStop).toEqual({ id: 'b', seq: 1, pan: false });
+    expect(S().focusStop).toBe(stopBefore);
     S().selectDay('b>c');
     expect(S().focusSeg?.seq).toBe(2);
   });
 
-  it('openStop requests a popup with pan', () => {
+  it('openStop requests a zoom to the stop and turns on the lodging layer', () => {
     const prev = S().focusStop?.seq ?? 0;
+    usePlanner.setState({ showPois: { ...S().showPois, accommodation: false } });
     S().openStop('x');
-    expect(S().focusStop).toEqual({ id: 'x', seq: prev + 1, pan: true });
+    expect(S().focusStop).toEqual({ id: 'x', seq: prev + 1 });
+    expect(S().showPois.accommodation).toBe(true);
   });
 });
 
@@ -175,6 +178,34 @@ describe('lodging and units', () => {
     expect(S().imperial).toBe(!before); // same value -> no-op
     S().setImperial(before);
     expect(S().imperial).toBe(before);
+  });
+});
+
+describe('lunch picks', () => {
+  it('sets and clears a lunch pick per segment', () => {
+    S().setLunch('a>b', 'n1');
+    expect(S().lunch).toEqual({ 'a>b': 'n1' });
+    S().setLunch('a>b', null);
+    expect(S().lunch).toEqual({});
+  });
+
+  it('flips lunch keys on reverse and drops them when a bounding stop is removed', () => {
+    const [a, b, c] = S().stops;
+    S().setLunch(`${a.id}>${b.id}`, 'n1');
+    S().setLunch(`${b.id}>${c.id}`, 'n2');
+    S().toggleDirection();
+    expect(S().lunch).toEqual({ [`${b.id}>${a.id}`]: 'n1', [`${c.id}>${b.id}`]: 'n2' });
+    S().toggleDirection();
+    S().removeStop(b.id);
+    expect(S().lunch).toEqual({});
+  });
+
+  it('persists lunch picks through the URL hash', async () => {
+    const [a, b] = S().stops;
+    S().setLunch(`${a.id}>${b.id}`, 'n1');
+    vi.advanceTimersByTime(300);
+    const fresh = await reloadStore();
+    expect(fresh.getState().lunch).toEqual({ [`${a.id}>${b.id}`]: 'n1' });
   });
 });
 
