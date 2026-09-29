@@ -4,7 +4,7 @@
   "triggerOnUpdates": true,
   "statusCheck": true,
   "statusCommentsEnabled": true,
-  "includeAuthors": ["*"],
+  "includeAuthors": ["**"],
   "excludeAuthors": [],
   "ignorePatterns": "node_modules/**\ndist/**\npackage-lock.json\ndata/raw/**",
   "shouldUpdateDescription": true,
