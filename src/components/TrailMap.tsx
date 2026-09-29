@@ -14,7 +14,6 @@ import {
   fmtDistM,
   kmAt,
   lunchPois,
-  nearestOnTrail,
   POIS,
   positionAt,
   TRAIL,
@@ -74,6 +73,7 @@ function dayNumBySeg(): Map<string, number> {
 
 /** Lodging within this along-trail distance of a stop is offered as that night's lodging, not a new stop. */
 const LODGING_SNAP_KM = 3;
+const TOWN_SNAP_KM = 1;
 
 function nearestStop(stops: Stop[], trailIdx: number, maxKm: number): Stop | null {
   const km = kmAt(trailIdx);
@@ -173,7 +173,13 @@ export function TrailMap() {
       if (stop) appendStay(el, poi, stop, () => popup.remove());
       else action('Add as overnight stop', false, addStop);
     } else if (poi.kind === 'town') {
-      action('Add as overnight stop', false, addStop);
+      const stop = nearestStop(st.stops, poi.trailIdx, TOWN_SNAP_KM);
+      if (stop) {
+        const note = document.createElement('div');
+        note.className = 'poi-note';
+        note.textContent = `Stop ${st.stops.indexOf(stop) + 1} on your route · ${stop.name}`;
+        el.appendChild(note);
+      } else action('Add as overnight stop', false, addStop);
     } else if (poi.kind === 'food') {
       const leg = lunchLeg(poi.id);
       if (leg) {
@@ -336,12 +342,6 @@ export function TrailMap() {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': HEATHER, 'line-width': 2.5, 'line-dasharray': [1, 2], 'line-opacity': 0.9 },
       });
-      map.addLayer({
-        id: 'trail-hit',
-        type: 'line',
-        source: 'trail',
-        paint: { 'line-width': 24, 'line-opacity': 0 },
-      });
       // ring around each stop's chosen lodging
       map.addLayer({
         id: 'poi-chosen',
@@ -445,7 +445,7 @@ export function TrailMap() {
         },
       });
 
-      // click: POI -> popup; near-trail -> add stop
+      // click: pin -> zoom to town; POI -> popup
       map.on('click', (e: MapMouseEvent) => {
         // pin clicks reach the map too; handle them here so the popup's close-on-click skips this event
         const pin = (e.originalEvent.target as Element).closest<HTMLElement>('.stop-marker');
@@ -461,14 +461,11 @@ export function TrailMap() {
           const poi = POIS.find(p => p.id === f.properties.id);
           if (!poi) return;
           showPoiPopup(map, poi);
-          return;
         }
-        const { fracIdx, distM } = nearestOnTrail(e.lngLat.lat, e.lngLat.lng);
-        if (distM < 150) usePlanner.getState().addStop(fracIdx);
       });
       map.on('mousemove', (e: MapMouseEvent) => {
         const hits = map.queryRenderedFeatures(e.point, {
-          layers: ['poi-towns', 'poi-lodging', 'poi-food', 'poi-distillery', 'poi-distillery-labels', 'trail-hit'],
+          layers: ['poi-towns', 'poi-lodging', 'poi-food', 'poi-distillery', 'poi-distillery-labels'],
         });
         map.getCanvas().style.cursor = hits.length ? 'pointer' : '';
       });
