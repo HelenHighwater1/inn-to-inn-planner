@@ -3,6 +3,7 @@
   "commentTypes": ["logic", "syntax", "style"],
   "triggerOnUpdates": true,
   "statusCheck": true,
+  "statusCommentsEnabled": true,
   "includeAuthors": ["*"],
   "excludeAuthors": [],
   "ignorePatterns": "node_modules/**\ndist/**\npackage-lock.json\ndata/raw/**",
