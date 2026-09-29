@@ -1,8 +1,9 @@
 {
   "strictness": 2,
   "commentTypes": ["logic", "syntax", "style"],
-  "autoReview": ["open", "push"],
-  "triggerOnDrafts": false,
+  "triggerOnUpdates": true,
+  "includeAuthors": ["*"],
+  "excludeAuthors": [],
   "ignorePatterns": "node_modules/**\ndist/**\npackage-lock.json\ndata/raw/**",
   "shouldUpdateDescription": true,
   "fixWithAI": true,
