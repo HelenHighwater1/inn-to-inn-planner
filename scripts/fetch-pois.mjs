@@ -1,16 +1,20 @@
-// Builds src/data/pois.json: accommodation, food, and towns near the trail.
+// Builds a trek's pois.json: accommodation, food, and towns near the trail.
 // Fetches a trail-bounding-box Overpass query (cached in data/raw/), then keeps
 // only POIs within MAX_DIST_M of the trail, recording each POI's nearest point
 // on the polyline as a fractional trail index.
+//
+//   node scripts/fetch-pois.mjs [trek] [--refetch]
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trekArg } from './treks.config.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const RAW = join(ROOT, 'data', 'raw', 'pois-osm.json');
-const TRAIL = JSON.parse(readFileSync(join(ROOT, 'src', 'data', 'trail.json'), 'utf8'));
-const OUT = join(ROOT, 'src', 'data', 'pois.json');
+const TREK = trekArg(process.argv);
+const RAW = join(ROOT, TREK.rawPois);
+const TRAIL = JSON.parse(readFileSync(join(ROOT, TREK.trailOut), 'utf8'));
+const OUT = join(ROOT, TREK.poisOut);
 const MAX_DIST_M = 2500;
 const UA = 'InnToInnPlanner/0.1 (personal hiking planner)';
 const OVERPASS_MIRRORS = [
@@ -36,7 +40,7 @@ const QUERY = `[out:json][timeout:120];(
 
 async function loadRaw() {
   if (!refetch && existsSync(RAW)) {
-    console.log('using cached data/raw/pois-osm.json');
+    console.log(`using cached ${TREK.rawPois}`);
     return JSON.parse(readFileSync(RAW, 'utf8'));
   }
   for (const host of OVERPASS_MIRRORS) {
@@ -173,7 +177,7 @@ for (const e of raw.elements) {
   pois.push(poi);
 }
 // manual additions: POIs missing from OSM or beyond the distance catchment
-const MANUAL = join(ROOT, 'data', 'manual-pois.json');
+const MANUAL = join(ROOT, TREK.manualPois);
 if (existsSync(MANUAL)) {
   for (const m of JSON.parse(readFileSync(MANUAL, 'utf8'))) {
     const { fracIdx, distM } = nearestOnTrail(m.lat, m.lon);

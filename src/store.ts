@@ -1,13 +1,16 @@
 import { create } from 'zustand';
 import {
+  activeTrek,
   findCandidateByName,
   kmAt,
   lunchPois,
+  setActiveTrek,
   snapCandidatePreferTown,
   TRAIL,
   type Poi,
   type Stop,
 } from './lib/trail';
+import { DEFAULT_TREK, isTrekId, TREKS, type TrekId } from './lib/treks';
 
 /** A visit/note added to a specific day — a POI reference or free text. */
 export interface Extra {
@@ -16,6 +19,7 @@ export interface Extra {
 }
 
 interface PlannerState {
+  trek: TrekId; // which trail the itinerary is for
   stops: Stop[]; // in walking order (trailIdx, descending when reversed); first/last are the trip endpoints
   restAt: Record<string, number>; // stop id -> rest days (extra nights) on arrival
   skipped: Set<string>; // segment keys done by cab
@@ -28,6 +32,7 @@ interface PlannerState {
   focusStop: { id: string; seq: number } | null; // zoom to a stop
   showPois: { accommodation: boolean; food: boolean; town: boolean; distillery: boolean };
   hoverPois: string[] | null; // poi ids to highlight on the map (e.g. lunch hover)
+  setTrek: (id: TrekId) => void;
   selectDay: (key: string) => void;
   focusSegment: (key: string) => void;
   openStop: (id: string) => void;
@@ -75,7 +80,7 @@ function makeStop(fracIdx: number, imperial = false): Stop {
 }
 
 function defaultStops(): Stop[] {
-  const names = ['Buckie', 'Fochabers', 'Craigellachie', 'Ballindalloch', 'Grantown-on-Spey', 'Aviemore', 'Newtonmore'];
+  const names = activeTrek().defaultStops;
   const stops = names
     .map(n => findCandidateByName(n))
     .filter((c): c is NonNullable<typeof c> => !!c)
@@ -92,6 +97,7 @@ function defaultStops(): Stop[] {
 // ---- URL hash + localStorage persistence ----
 
 interface Persisted {
+  t?: TrekId; // trek this itinerary belongs to (absent = speyside, pre-multi-trek links)
   s: [number, string, string, string?][];
   r: Record<string, number> | string[]; // v2: id -> rest days; v1 tolerated (array of ids)
   k: string[];
@@ -100,7 +106,8 @@ interface Persisted {
   d: 0 | 1;
   u: 0 | 1;
 }
-const LS_KEY = 'speyside-itinerary-v1';
+const lsKey = (trek: TrekId) => `${trek}-itinerary-v1`; // speyside keeps the original key
+const LS_TREK = 'inn-to-inn-trek'; // last-viewed trek
 
 const trailOrder = (reversed: boolean) => (a: Stop, b: Stop) =>
   reversed ? b.trailIdx - a.trailIdx : a.trailIdx - b.trailIdx;
@@ -121,6 +128,7 @@ function reconcileLunch(stops: Stop[], lunch: Record<string, string>): Record<st
 
 function serialize(s: PlannerState): Persisted {
   return {
+    t: s.trek,
     s: s.stops.map(st => [+st.trailIdx.toFixed(1), st.name, st.kind, st.lodgingId]),
     r: s.restAt,
     k: [...s.skipped],
@@ -138,21 +146,22 @@ function b64decode(s: string): object {
   return JSON.parse(atob(s.replaceAll('-', '+').replaceAll('_', '/')));
 }
 
-function loadInitial(): Pick<
+type RouteState = Pick<
   PlannerState,
   'stops' | 'restAt' | 'skipped' | 'extras' | 'lunch' | 'reversed' | 'imperial'
-> {
-  let blob: Persisted | null = null;
+>;
+
+function readLsBlob(trek: TrekId): Persisted | null {
   try {
-    const h = location.hash;
-    if (h.startsWith('#i=')) blob = b64decode(h.slice(3)) as Persisted;
-    else {
-      const ls = localStorage.getItem(LS_KEY);
-      if (ls) blob = JSON.parse(ls) as Persisted;
-    }
+    const ls = localStorage.getItem(lsKey(trek));
+    return ls ? (JSON.parse(ls) as Persisted) : null;
   } catch {
-    blob = null;
+    return null;
   }
+}
+
+/** Planner fields decoded from a persisted blob, or defaults for the active trek. */
+function stateFromBlob(blob: Persisted | null): RouteState {
   if (blob && Array.isArray(blob.s) && blob.s.length >= 2) {
     const stops: Stop[] = blob.s
       .map(([trailIdx, name, kind, lodgingId]) => ({
@@ -189,6 +198,36 @@ function loadInitial(): Pick<
   };
 }
 
+/** Route state for a trek: its localStorage blob, falling back to default stops. */
+function loadTrekState(trek: TrekId): RouteState {
+  setActiveTrek(trek); // must precede defaultStops()/blob decode — both read the active dataset
+  return stateFromBlob(readLsBlob(trek));
+}
+
+function loadInitial(): RouteState & { trek: TrekId } {
+  let blob: Persisted | null = null;
+  try {
+    const h = location.hash;
+    if (h.startsWith('#i=')) blob = b64decode(h.slice(3)) as Persisted;
+  } catch {
+    blob = null;
+  }
+  let trek: TrekId;
+  if (blob) trek = isTrekId(blob.t) ? blob.t : DEFAULT_TREK;
+  else {
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LS_TREK);
+    } catch {
+      /* blocked storage — fall through to the default trek */
+    }
+    trek = isTrekId(last) ? last : DEFAULT_TREK;
+    blob = readLsBlob(trek);
+  }
+  setActiveTrek(trek);
+  return { trek, ...stateFromBlob(blob) };
+}
+
 const initial = loadInitial();
 
 export const usePlanner = create<PlannerState>((set, get) => ({
@@ -198,6 +237,26 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   focusStop: null,
   showPois: { accommodation: true, food: true, town: false, distillery: false },
   hoverPois: null,
+
+  // switch treks: flush the outgoing plan to its own key, then load the new trek's
+  setTrek: id => {
+    const s = get();
+    if (id === s.trek || !(id in TREKS)) return;
+    try {
+      localStorage.setItem(lsKey(s.trek), JSON.stringify(serialize(s)));
+    } catch {
+      /* private mode etc. */
+    }
+    set({
+      trek: id,
+      ...loadTrekState(id),
+      imperial: s.imperial,
+      selected: null,
+      focusSeg: null,
+      focusStop: null,
+    });
+    persist(get()); // flush now — a fast reload must not see the old trek in the hash
+  },
 
   // selecting a day card: highlight on the map and fly to the segment
   selectDay: key =>
@@ -320,17 +379,20 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     }),
 }));
 
+function persist(s: PlannerState) {
+  const blob = serialize(s);
+  try {
+    localStorage.setItem(lsKey(s.trek), JSON.stringify(blob));
+    localStorage.setItem(LS_TREK, s.trek);
+    history.replaceState(null, '', `#i=${b64encode(blob)}`);
+  } catch {
+    /* private mode etc. */
+  }
+}
+
 // persist on every change (debounced)
 let t: ReturnType<typeof setTimeout>;
 usePlanner.subscribe(s => {
   clearTimeout(t);
-  t = setTimeout(() => {
-    const blob = serialize(s);
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(blob));
-      history.replaceState(null, '', `#i=${b64encode(blob)}`);
-    } catch {
-      /* private mode etc. */
-    }
-  }, 250);
+  t = setTimeout(() => persist(s), 250);
 });

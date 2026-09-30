@@ -1,7 +1,104 @@
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { TrailMap } from './components/TrailMap';
 import { ItineraryTable, PrintSheet } from './components/ItineraryTable';
 import { usePlanner } from './store';
+import { TREK_LIST, TREKS } from './lib/treks';
 import './App.css';
+
+function TrekPicker() {
+  const trek = usePlanner(s => s.trek);
+  const setTrek = usePlanner(s => s.setTrek);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    // listbox semantics: focus the selected option and drive options with arrow keys
+    const opts = ref.current?.querySelector<HTMLButtonElement>('.trek-opt.on');
+    (opts ?? ref.current?.querySelector<HTMLButtonElement>('.trek-opt'))?.focus();
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const onMenuKeyDown = (e: ReactKeyboardEvent) => {
+    const opts = [...ref.current!.querySelectorAll<HTMLButtonElement>('.trek-opt')];
+    const i = opts.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      opts[(i + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length]?.focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      opts[e.key === 'Home' ? 0 : opts.length - 1]?.focus();
+    }
+  };
+
+  return (
+    <span className="trek-pick" ref={ref}>
+      <button
+        ref={btnRef}
+        className="trek-btn"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {TREKS[trek].name}
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <span
+          className="trek-menu"
+          role="listbox"
+          aria-label="Scottish Highland treks"
+          onKeyDown={onMenuKeyDown}
+        >
+          {TREK_LIST.map(t => (
+            <button
+              key={t.id}
+              role="option"
+              aria-selected={t.id === trek}
+              className={`trek-opt${t.id === trek ? ' on' : ''}`}
+              onClick={() => {
+                setTrek(t.id);
+                setOpen(false);
+              }}
+            >
+              <span className="trek-opt-name">{t.name}</span>
+              <span className="trek-opt-sub">
+                {t.from} to {t.to}
+              </span>
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export default function App() {
   const imperial = usePlanner(s => s.imperial);
@@ -9,6 +106,12 @@ export default function App() {
   const reset = usePlanner(s => s.reset);
   const reversed = usePlanner(s => s.reversed);
   const toggleDirection = usePlanner(s => s.toggleDirection);
+  const trek = usePlanner(s => s.trek);
+  const meta = TREKS[trek];
+
+  useEffect(() => {
+    document.title = `${meta.name} — Inn-to-Inn Planner`;
+  }, [meta.name]);
 
   return (
     <div className="app">
@@ -25,9 +128,12 @@ export default function App() {
             />
           </svg>
           <div className="brand-text">
-            <div className="brand-title">Speyside Way</div>
+            <div className="brand-title">Choose a Scottish Highland Trek:</div>
             <div className="brand-sub">
-              Inn-to-inn planner · {reversed ? 'Newtonmore to Buckie' : 'Buckie to Newtonmore'}
+              <TrekPicker />
+              <span className="brand-sub-rest">
+                Inn-to-inn planner · {reversed ? `${meta.to} to ${meta.from}` : `${meta.from} to ${meta.to}`}
+              </span>
             </div>
           </div>
         </div>
@@ -54,7 +160,7 @@ export default function App() {
               <path d="m7 21-4-4 4-4" />
               <path d="M3 17h13" />
             </svg>
-            <span>{reversed ? 'Hills to sea' : 'Sea to hills'}</span>
+            <span>{reversed ? meta.dirReverse : meta.dirForward}</span>
           </button>
           <button className="print-btn" onClick={() => window.print()} aria-label="Print itinerary">
             <svg
@@ -112,7 +218,7 @@ export default function App() {
         </div>
       </header>
       <main>
-        <TrailMap />
+        <TrailMap key={trek} />
         <aside aria-label="Itinerary">
           <ItineraryTable />
           <PrintSheet />
