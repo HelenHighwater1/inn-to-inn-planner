@@ -236,8 +236,9 @@ export function TrailMap() {
       row.className = 'poi-nights';
       row.innerHTML = `Nights
         <button class="n-btn" data-d="-1" aria-label="Fewer nights">−</button>
-        <span class="n-count">${nights}</span>
+        <span class="n-count"></span>
         <button class="n-btn" data-d="1" aria-label="More nights">+</button>`;
+      row.querySelector('.n-count')!.textContent = `${nights}`;
       row.querySelectorAll<HTMLButtonElement>('.n-btn').forEach(b =>
         b.addEventListener('click', () => {
           nights = Math.max(1, nights + Number(b.dataset.d));
@@ -591,7 +592,7 @@ export function TrailMap() {
   const routeSig = stops.map(s => s.id).join('>');
   useEffect(() => {
     popupRef.current?.remove();
-  }, [routeSig, skipped]);
+  }, [routeSig, skipped, restAt]);
 
   // update POI layer when toggles change
   useEffect(() => {
@@ -606,6 +607,8 @@ export function TrailMap() {
       })),
     };
     (map.getSource('pois') as GeoJSONSource)?.setData(fc);
+    if (map.getLayer('poi-chosen'))
+      map.setLayoutProperty('poi-chosen', 'visibility', showPois.accommodation ? 'visible' : 'none');
   }, [showPois, ready]);
 
   // ring-highlight POIs hovered from a day card

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   findCandidateByName,
   kmAt,
+  lunchPois,
   snapCandidatePreferTown,
   TRAIL,
   type Poi,
@@ -104,6 +105,20 @@ const LS_KEY = 'speyside-itinerary-v1';
 const trailOrder = (reversed: boolean) => (a: Stop, b: Stop) =>
   reversed ? b.trailIdx - a.trailIdx : a.trailIdx - b.trailIdx;
 
+/** Re-key lunch picks onto the adjacent segment that still offers the POI; drop picks with none. */
+function reconcileLunch(stops: Stop[], lunch: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(lunch).flatMap(([, poiId]) => {
+      const i = stops.findIndex(
+        (st, j) =>
+          j < stops.length - 1 &&
+          lunchPois(st.trailIdx, stops[j + 1].trailIdx).some(p => p.id === poiId),
+      );
+      return i >= 0 ? [[`${stops[i].id}>${stops[i + 1].id}`, poiId]] : [];
+    }),
+  );
+}
+
 function serialize(s: PlannerState): Persisted {
   return {
     s: s.stops.map(st => [+st.trailIdx.toFixed(1), st.name, st.kind, st.lodgingId]),
@@ -150,7 +165,9 @@ function loadInitial(): Pick<
       .sort(trailOrder(blob.d === 1));
     const restAt: Record<string, number> = Array.isArray(blob.r)
       ? Object.fromEntries(blob.r.map(id => [id, 1]))
-      : (blob.r ?? {});
+      : Object.fromEntries(
+          Object.entries(blob.r ?? {}).filter(([, v]) => Number.isFinite(v) && v >= 0),
+        );
     return {
       stops,
       restAt,
@@ -216,7 +233,8 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     const stop = poi ? makeStopFromPoi(poi) : makeStop(fracIdx, get().imperial);
     set(s => {
       if (s.stops.some(x => x.id === stop.id)) return s;
-      return { stops: [...s.stops, stop].sort(trailOrder(s.reversed)) };
+      const stops = [...s.stops, stop].sort(trailOrder(s.reversed));
+      return { stops, lunch: reconcileLunch(stops, s.lunch) };
     });
   },
 
@@ -235,7 +253,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
         restAt: Object.fromEntries(Object.entries(s.restAt).filter(([k]) => ids.has(k))),
         skipped: new Set([...s.skipped].filter(keyAlive)),
         extras: Object.fromEntries(Object.entries(s.extras).filter(([k]) => keyAlive(k))),
-        lunch: Object.fromEntries(Object.entries(s.lunch).filter(([k]) => keyAlive(k))),
+        lunch: reconcileLunch(stops, s.lunch),
       };
     });
   },
