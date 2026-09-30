@@ -1,16 +1,20 @@
-// Builds src/data/trail.json for the Speyside Way main line (OSM relation 1026251).
+// Builds the trail polyline for a trek (default: speyside; see treks.config.mjs).
 // Steps: assemble member ways -> densify to ~100m -> attach elevation (OpenTopoData)
 // -> smooth -> write [{lat,lng,ele,cumDistKm}]. Uses cached files in data/raw/ when
 // present; pass --refetch to update them from Overpass.
+//
+//   node scripts/fetch-trail.mjs [trek] [--refetch]
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { trekArg } from './treks.config.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RAW = join(ROOT, 'data', 'raw');
-const OUT = join(ROOT, 'src', 'data', 'trail.json');
-const REL_ID = 1026251;
+const TREK = trekArg(process.argv);
+const OUT = join(ROOT, TREK.trailOut);
+const REL_ID = TREK.relationId;
 const OVERPASS_MIRRORS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
@@ -41,8 +45,8 @@ async function overpass(query) {
 }
 
 async function loadRaw() {
-  const relPath = join(RAW, 'speyside-rel.json');
-  const waysPath = join(RAW, 'speyside-ways.json');
+  const relPath = join(ROOT, TREK.rawRel);
+  const waysPath = join(ROOT, TREK.rawWays);
   if (!refetch && existsSync(relPath) && existsSync(waysPath)) {
     console.log('using cached data/raw files');
     return {
@@ -59,7 +63,9 @@ async function loadRaw() {
 }
 
 // Walk the endpoint graph of member ways. The ways are unordered in the relation
-// but form one simple path (all interior endpoints degree-2, two terminals).
+// and ideally form one simple path, but a route can span several components
+// (e.g. a short mapping gap) — on a dead end we hop to the nearest unused
+// terminal and keep going toward the goal.
 function assemble(_rel, waysData) {
   const ways = waysData.elements.filter(e => e.type === 'way');
   const wayById = new Map(ways.map(w => [w.id, w]));
@@ -74,20 +80,35 @@ function assemble(_rel, waysData) {
   if (terminals.length !== 2) {
     console.warn(`expected 2 terminals, found ${terminals.length} — graph may have branches/gaps`);
   }
-  // start at the northernmost terminal (Buckie)
+  // start at the terminal nearest the trek's configured trailhead; the far
+  // trailhead is the terminal farthest from it
   const nodePos = new Map();
   for (const w of ways) {
     nodePos.set(w.nodes[0], w.geometry[0]);
     nodePos.set(w.nodes[w.nodes.length - 1], w.geometry[w.geometry.length - 1]);
   }
-  terminals.sort((a, b) => nodePos.get(b).lat - nodePos.get(a).lat);
+  terminals.sort(
+    (a, b) => dist(nodePos.get(a), TREK.start) - dist(nodePos.get(b), TREK.start),
+  );
   let at = terminals[0];
-  const goal = terminals[1];
+  const goal = terminals[terminals.length - 1];
   const used = new Set();
   const chain = [];
   while (at !== goal) {
-    const next = adj.get(at).find(x => !used.has(x.wayId));
-    if (!next) { console.warn(`dead end before goal at node ${at}`); break; }
+    const next = (adj.get(at) ?? []).find(x => !used.has(x.wayId));
+    if (!next) {
+      // dead end — pick up the nearest terminal of an unused component
+      const cand = terminals.filter(t => adj.get(t)?.some(x => !used.has(x.wayId)));
+      if (!cand.length) { console.warn(`dead end before goal at node ${at}`); break; }
+      cand.sort(
+        (a, b) => dist(nodePos.get(a), nodePos.get(at)) - dist(nodePos.get(b), nodePos.get(at)),
+      );
+      console.warn(
+        `graph gap: hopping ${(dist(nodePos.get(at), nodePos.get(cand[0])) * 1000).toFixed(0)}m to next component`,
+      );
+      at = cand[0];
+      continue;
+    }
     const w = wayById.get(next.wayId);
     const reversed = w.nodes[0] !== at;
     chain.push({ id: w.id, reversed });

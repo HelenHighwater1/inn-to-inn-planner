@@ -68,9 +68,95 @@ header {
 }
 
 .brand-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 12.5px;
   color: var(--muted);
   letter-spacing: 0.02em;
+}
+
+/* trek dropdown in the header */
+.trek-pick {
+  position: relative;
+  display: inline-block;
+}
+
+.trek-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -3px -8px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.trek-btn:hover {
+  background: var(--moss-tint);
+}
+
+.trek-btn[aria-expanded='true'] {
+  background: var(--card);
+  border-color: var(--line-btn);
+}
+
+.trek-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -1px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--line-card);
+  border-radius: 10px;
+  box-shadow: var(--shadow-float);
+}
+
+.trek-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.trek-opt:hover {
+  background: var(--paper);
+}
+
+.trek-opt.on {
+  background: var(--moss-tint);
+}
+
+.trek-opt.on .trek-opt-name {
+  color: var(--forest);
+  font-weight: 600;
+}
+
+.trek-opt-name {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.trek-opt-sub {
+  font-size: 11.5px;
+  color: var(--muted);
 }
 
 .header-controls {

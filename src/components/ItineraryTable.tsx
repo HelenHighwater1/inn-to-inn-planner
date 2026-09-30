@@ -3,6 +3,7 @@ import { usePlanner } from '../store';
 import { deriveDays } from '../lib/itinerary';
 import { PrintMap } from './PrintMap';
 import { distilleriesNear, distilleryPois, fmtKm, fmtM, lunchPois, POIS, type Poi } from '../lib/trail';
+import { TREKS } from '../lib/treks';
 
 const ICONS = {
   mountain: (
@@ -56,6 +57,8 @@ export function ItineraryTable() {
   const reversed = usePlanner(s => s.reversed);
   const imperial = usePlanner(s => s.imperial);
   const selected = usePlanner(s => s.selected);
+  const trek = usePlanner(s => s.trek);
+  const meta = TREKS[trek];
   const [adding, setAdding] = useState<string | null>(null);
   const {
     selectDay,
@@ -169,7 +172,8 @@ export function ItineraryTable() {
       <div className="side-head">
         <div className="eyebrow">Your itinerary</div>
         <h2 className="side-title">
-          {days.length} day{days.length === 1 ? '' : 's'}, {reversed ? 'hills to sea' : 'sea to hills'}
+          {days.length} day{days.length === 1 ? '' : 's'},{' '}
+          {reversed ? meta.dirReverse.toLowerCase() : meta.dirForward.toLowerCase()}
         </h2>
         <div className="stat-strip">
           <div className="stat">
@@ -371,6 +375,8 @@ export function PrintSheet() {
   const lunchPick = usePlanner(s => s.lunch);
   const reversed = usePlanner(s => s.reversed);
   const imperial = usePlanner(s => s.imperial);
+  const trek = usePlanner(s => s.trek);
+  const meta = TREKS[trek];
 
   const days = deriveDays(stops, restAt, skipped);
   const walkKm = days.reduce((s, d) => (d.type === 'walk' ? s + d.seg.distKm : s), 0);
@@ -389,9 +395,12 @@ export function PrintSheet() {
 
   return (
     <div className="print-sheet">
-      <h1>Speyside Way — inn-to-inn itinerary</h1>
+      <h1>{meta.name} — inn-to-inn itinerary</h1>
       <p className="ps-sub">
-        {reversed ? 'Newtonmore → Buckie (hills to sea)' : 'Buckie → Newtonmore (sea to hills)'} ·{' '}
+        {reversed
+          ? `${meta.to} → ${meta.from} (${meta.dirReverse.toLowerCase()})`
+          : `${meta.from} → ${meta.to} (${meta.dirForward.toLowerCase()})`}{' '}
+        ·{' '}
         {days.length} days · {fmtKm(walkKm, imperial)} walking · {fmtM(gainM, imperial)} climbing ·{' '}
         {fmtM(lossM, imperial)} descent
       </p>

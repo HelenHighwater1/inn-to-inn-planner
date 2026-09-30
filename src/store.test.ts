@@ -20,6 +20,7 @@ beforeEach(() => {
   // and a real timer firing mid-await (e.g. during a fresh store import) could
   // clobber a test's fixture hash/localStorage
   vi.useFakeTimers();
+  S().setTrek('speyside'); // a previous test may have left the store on another trek
   S().reset();
   localStorage.clear();
   history.replaceState(null, '', '/');
@@ -344,6 +345,68 @@ describe('persistence', () => {
     history.replaceState(null, '', `#i=${b64encode(blob)}`);
     const fresh = await reloadStore();
     expect(fresh.getState().stops).toHaveLength(7);
+  });
+});
+
+describe('setTrek', () => {
+  const GGW_DEFAULTS = [
+    'Fort William',
+    'Gairlochy',
+    'South Laggan',
+    'Fort Augustus',
+    'Invermoriston',
+    'Drumnadrochit',
+    'Inverness',
+  ];
+
+  it('switches to Great Glen Way defaults and back without losing the saved plan', () => {
+    const speysideStops = S().stops.map(s => s.name);
+    S().setRestDays(S().stops[1].id, 2);
+
+    S().setTrek('great-glen-way');
+    expect(S().trek).toBe('great-glen-way');
+    expect(S().stops.map(s => s.name)).toEqual(GGW_DEFAULTS);
+    expect(S().restAt).toEqual({});
+    expect(S().selected).toBeNull();
+
+    S().setTrek('speyside');
+    expect(S().stops.map(s => s.name)).toEqual(speysideStops);
+    expect(S().restAt[S().stops[1].id]).toBe(2);
+  });
+
+  it('restores the last-viewed trek on a fresh load', async () => {
+    S().setTrek('great-glen-way');
+    S().setRestDays(S().stops[1].id, 1);
+    vi.advanceTimersByTime(300);
+    const fresh = await reloadStore();
+    expect(fresh.getState().trek).toBe('great-glen-way');
+    expect(fresh.getState().restAt[fresh.getState().stops[1].id]).toBe(1);
+  });
+
+  it('honours the trek id in a shared link', async () => {
+    const blob = {
+      t: 'great-glen-way',
+      s: [
+        [0, 'FW', 'town'],
+        [4400, 'INV', 'town'],
+      ],
+      r: {},
+      k: [],
+      e: {},
+      d: 0,
+      u: 1,
+    };
+    history.replaceState(null, '', `#i=${b64encode(blob)}`);
+    const fresh = await reloadStore();
+    expect(fresh.getState().trek).toBe('great-glen-way');
+    expect(fresh.getState().stops.map(s => s.name)).toEqual(['FW', 'INV']);
+  });
+
+  it('ignores an unknown trek id', () => {
+    const names = S().stops.map(s => s.name);
+    S().setTrek('nope' as never);
+    expect(S().trek).toBe('speyside');
+    expect(S().stops.map(s => s.name)).toEqual(names);
   });
 });
 

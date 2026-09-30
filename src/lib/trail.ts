@@ -1,5 +1,4 @@
-import trailData from '../data/trail.json';
-import poiData from '../data/pois.json';
+import { DEFAULT_TREK, TREKS, type Trek, type TrekId } from './treks';
 
 export interface TrailPoint {
   lat: number;
@@ -33,9 +32,27 @@ export interface Stop {
   warn?: 'no-accommodation';
 }
 
-export const TRAIL = trailData as TrailPoint[];
-export const POIS = poiData as Poi[];
-export const TRAIL_KM = TRAIL[TRAIL.length - 1].cumDistKm;
+/** Named towns + accommodation near the trail — the snap targets for stop pins. */
+const candidateStops = (pois: Poi[]) =>
+  pois.filter(p => p.name && (p.kind === 'town' || p.kind === 'accommodation') && p.distToTrailM <= 2500);
+
+// The active trek's dataset. These are `let` live bindings: setActiveTrek()
+// swaps them in place so every importer sees the current trek's data.
+let active: Trek = TREKS[DEFAULT_TREK];
+export let TRAIL: TrailPoint[] = active.trail;
+export let POIS: Poi[] = active.pois;
+export let TRAIL_KM = active.trail[active.trail.length - 1].cumDistKm;
+export let CANDIDATE_STOPS: Poi[] = candidateStops(active.pois);
+
+export const activeTrek = (): Trek => active;
+
+export function setActiveTrek(id: TrekId): void {
+  active = TREKS[id];
+  TRAIL = active.trail;
+  POIS = active.pois;
+  TRAIL_KM = TRAIL[TRAIL.length - 1].cumDistKm;
+  CANDIDATE_STOPS = candidateStops(POIS);
+}
 
 const K = 111320;
 const D2R = Math.PI / 180;
@@ -107,10 +124,7 @@ export function climbBetween(fromIdx: number, toIdx: number): { gainM: number; l
   return fromIdx <= toIdx ? { gainM: up, lossM: down } : { gainM: down, lossM: up };
 }
 
-/** Named towns + accommodation near the trail — the snap targets for stop pins. */
-export const CANDIDATE_STOPS = POIS.filter(
-  p => p.name && (p.kind === 'town' || p.kind === 'accommodation') && p.distToTrailM <= 2500,
-);
+
 
 /** Nearest candidate stop to a trail position, within maxKm along-trail. */
 export function snapCandidate(fracIdx: number, maxKm = 4): Poi | null {
