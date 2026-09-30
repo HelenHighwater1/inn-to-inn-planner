@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePlanner } from './store';
-import { POIS, TRAIL, type Stop } from './lib/trail';
+import { lunchPois, POIS, TRAIL, type Stop } from './lib/trail';
 
 const S = () => usePlanner.getState();
 
@@ -142,19 +142,22 @@ describe('rest days, extras, skip', () => {
 });
 
 describe('selection and focus', () => {
-  it('selectDay sets selection and requests a map focus', () => {
-    S().selectDay('a>b', 'b');
+  it('selectDay sets selection and requests a map focus without opening a stop', () => {
+    const stopBefore = S().focusStop;
+    S().selectDay('a>b');
     expect(S().selected).toBe('a>b');
     expect(S().focusSeg).toEqual({ key: 'a>b', seq: 1 });
-    expect(S().focusStop).toEqual({ id: 'b', seq: 1, pan: false });
+    expect(S().focusStop).toBe(stopBefore);
     S().selectDay('b>c');
     expect(S().focusSeg?.seq).toBe(2);
   });
 
-  it('openStop requests a popup with pan', () => {
+  it('openStop requests a zoom to the stop and turns on the lodging layer', () => {
     const prev = S().focusStop?.seq ?? 0;
+    usePlanner.setState({ showPois: { ...S().showPois, accommodation: false } });
     S().openStop('x');
-    expect(S().focusStop).toEqual({ id: 'x', seq: prev + 1, pan: true });
+    expect(S().focusStop).toEqual({ id: 'x', seq: prev + 1 });
+    expect(S().showPois.accommodation).toBe(true);
   });
 });
 
@@ -175,6 +178,54 @@ describe('lodging and units', () => {
     expect(S().imperial).toBe(!before); // same value -> no-op
     S().setImperial(before);
     expect(S().imperial).toBe(before);
+  });
+});
+
+describe('lunch picks', () => {
+  it('sets and clears a lunch pick per segment', () => {
+    S().setLunch('a>b', 'n1');
+    expect(S().lunch).toEqual({ 'a>b': 'n1' });
+    S().setLunch('a>b', null);
+    expect(S().lunch).toEqual({});
+  });
+
+  it('flips lunch keys on reverse and drops them when a bounding stop is removed', () => {
+    const [a, b, c] = S().stops;
+    S().setLunch(`${a.id}>${b.id}`, 'n1');
+    S().setLunch(`${b.id}>${c.id}`, 'n2');
+    S().toggleDirection();
+    expect(S().lunch).toEqual({ [`${b.id}>${a.id}`]: 'n1', [`${c.id}>${b.id}`]: 'n2' });
+    S().toggleDirection();
+    S().removeStop(b.id);
+    expect(S().lunch).toEqual({});
+  });
+
+  it('re-keys a lunch pick when a new stop splits its segment', () => {
+    const stops0 = S().stops;
+    const leg = stops0.findIndex(
+      (s, i) => i < stops0.length - 1 && lunchPois(s.trailIdx, stops0[i + 1].trailIdx).length > 0,
+    );
+    const [a, b] = [stops0[leg], stops0[leg + 1]];
+    const poi = lunchPois(a.trailIdx, b.trailIdx)[0];
+    S().setLunch(`${a.id}>${b.id}`, poi.id);
+    S().addStop((a.trailIdx + b.trailIdx) / 2);
+    const stops = S().stops;
+    const seg = stops.findIndex(
+      (s, i) =>
+        i < stops.length - 1 &&
+        lunchPois(s.trailIdx, stops[i + 1].trailIdx).some(p => p.id === poi.id),
+    );
+    // re-keyed onto the segment that still offers it, or dropped — never left under the dead a>b key
+    if (seg >= 0) expect(S().lunch).toEqual({ [`${stops[seg].id}>${stops[seg + 1].id}`]: poi.id });
+    else expect(S().lunch).toEqual({});
+  });
+
+  it('persists lunch picks through the URL hash', async () => {
+    const [a, b] = S().stops;
+    S().setLunch(`${a.id}>${b.id}`, 'n1');
+    vi.advanceTimersByTime(300);
+    const fresh = await reloadStore();
+    expect(fresh.getState().lunch).toEqual({ [`${a.id}>${b.id}`]: 'n1' });
   });
 });
 
@@ -244,6 +295,24 @@ describe('persistence', () => {
     expect(fs.skipped.has('s10>s500')).toBe(true);
     expect(fs.reversed).toBe(true);
     expect(fs.imperial).toBe(false);
+  });
+
+  it('drops non-numeric rest-day values from the URL hash', async () => {
+    const blob = {
+      s: [
+        [10, 'A', 'town'],
+        [500, 'B', 'town'],
+        [900, 'C', 'town'],
+      ],
+      r: { s500: '<img src=x onerror=alert(1)>', s900: 2 },
+      k: [],
+      e: {},
+      d: 0,
+      u: 0,
+    };
+    history.replaceState(null, '', `#i=${b64encode(blob)}`);
+    const fresh = await reloadStore();
+    expect(fresh.getState().restAt).toEqual({ s900: 2 });
   });
 
   it('loads from localStorage when there is no hash', async () => {

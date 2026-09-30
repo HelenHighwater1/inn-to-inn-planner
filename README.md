@@ -7,10 +7,10 @@ Built with React, TypeScript, Vite, and [MapLibre GL](https://maplibre.org/). Al
 ## Features
 
 - Interactive map of the full Speyside Way (Buckie to Newtonmore) with a custom muted MapLibre style
-- Click the trail to add stops; drag numbered pins to adjust them
+- Add stops from a town or inn popup on the map (or the + Add picker); drag numbered pins to adjust them
 - Per-day itinerary cards with distance, elevation gain, and lunch-stop counts
 - POI layers for towns, lodging, food, and distilleries — enriched with website links, images (OSM / Wikimedia / Wikipedia / site metadata), and contact info
-- Per-night lodging picker, including manually added off-trail options (`data/manual-pois.json`)
+- Pick lodging and lunch straight from map popups: a hotel within ~3 km of a stop becomes that stop's lodging (replacing any earlier pick, with a nights stepper) instead of adding a new stop — includes manually added off-trail options (`data/manual-pois.json`); a food spot in the middle 50% of a day can be chosen as that day's lunch
 - Miles/feet ↔ km/meters unit toggle
 - Itinerary state persists in the URL hash (shareable links)
 

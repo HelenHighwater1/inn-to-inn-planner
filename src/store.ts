@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   findCandidateByName,
   kmAt,
+  lunchPois,
   snapCandidatePreferTown,
   TRAIL,
   type Poi,
@@ -19,17 +20,19 @@ interface PlannerState {
   restAt: Record<string, number>; // stop id -> rest days (extra nights) on arrival
   skipped: Set<string>; // segment keys done by cab
   extras: Record<string, Extra[]>; // day key ("idA>idB" or "rest:{id}") -> visits/notes
+  lunch: Record<string, string>; // segment key -> chosen lunch POI id
   reversed: boolean; // hiking direction: false = Buckie → Newtonmore
   imperial: boolean;
   selected: string | null; // selected day: segment key "idA>idB" or "rest:{stopId}"
   focusSeg: { key: string; seq: number } | null; // table -> map fly-to request
-  focusStop: { id: string; seq: number; pan: boolean } | null; // open stop popup; pan = also fly to the stop
+  focusStop: { id: string; seq: number } | null; // zoom to a stop
   showPois: { accommodation: boolean; food: boolean; town: boolean; distillery: boolean };
   hoverPois: string[] | null; // poi ids to highlight on the map (e.g. lunch hover)
-  selectDay: (key: string, endStopId?: string) => void;
+  selectDay: (key: string) => void;
   focusSegment: (key: string) => void;
   openStop: (id: string) => void;
   setLodging: (stopId: string, poiId: string | null) => void;
+  setLunch: (segKey: string, poiId: string | null) => void;
   addStop: (fracIdx: number, poi?: Poi) => void;
   removeStop: (id: string) => void;
   setRestDays: (stopId: string, days: number) => void;
@@ -93,6 +96,7 @@ interface Persisted {
   r: Record<string, number> | string[]; // v2: id -> rest days; v1 tolerated (array of ids)
   k: string[];
   e: Record<string, Extra[]>;
+  l?: Record<string, string>;
   d: 0 | 1;
   u: 0 | 1;
 }
@@ -101,12 +105,27 @@ const LS_KEY = 'speyside-itinerary-v1';
 const trailOrder = (reversed: boolean) => (a: Stop, b: Stop) =>
   reversed ? b.trailIdx - a.trailIdx : a.trailIdx - b.trailIdx;
 
+/** Re-key lunch picks onto the adjacent segment that still offers the POI; drop picks with none. */
+function reconcileLunch(stops: Stop[], lunch: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(lunch).flatMap(([, poiId]) => {
+      const i = stops.findIndex(
+        (st, j) =>
+          j < stops.length - 1 &&
+          lunchPois(st.trailIdx, stops[j + 1].trailIdx).some(p => p.id === poiId),
+      );
+      return i >= 0 ? [[`${stops[i].id}>${stops[i + 1].id}`, poiId]] : [];
+    }),
+  );
+}
+
 function serialize(s: PlannerState): Persisted {
   return {
     s: s.stops.map(st => [+st.trailIdx.toFixed(1), st.name, st.kind, st.lodgingId]),
     r: s.restAt,
     k: [...s.skipped],
     e: s.extras,
+    l: s.lunch,
     d: s.reversed ? 1 : 0,
     u: s.imperial ? 1 : 0,
   };
@@ -121,7 +140,7 @@ function b64decode(s: string): object {
 
 function loadInitial(): Pick<
   PlannerState,
-  'stops' | 'restAt' | 'skipped' | 'extras' | 'reversed' | 'imperial'
+  'stops' | 'restAt' | 'skipped' | 'extras' | 'lunch' | 'reversed' | 'imperial'
 > {
   let blob: Persisted | null = null;
   try {
@@ -146,12 +165,15 @@ function loadInitial(): Pick<
       .sort(trailOrder(blob.d === 1));
     const restAt: Record<string, number> = Array.isArray(blob.r)
       ? Object.fromEntries(blob.r.map(id => [id, 1]))
-      : (blob.r ?? {});
+      : Object.fromEntries(
+          Object.entries(blob.r ?? {}).filter(([, v]) => Number.isFinite(v) && v >= 0),
+        );
     return {
       stops,
       restAt,
       skipped: new Set(blob.k ?? []),
       extras: blob.e ?? {},
+      lunch: blob.l ?? {},
       reversed: blob.d === 1,
       imperial: blob.u === 1,
     };
@@ -161,6 +183,7 @@ function loadInitial(): Pick<
     restAt: {},
     skipped: new Set(),
     extras: {},
+    lunch: {},
     reversed: false,
     imperial: true,
   };
@@ -176,19 +199,20 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   showPois: { accommodation: true, food: true, town: false, distillery: false },
   hoverPois: null,
 
-  // selecting a day card: highlight on the map, fly to the segment,
-  // and open the popup on the day's end stop (without a second camera move)
-  selectDay: (key, endStopId) =>
+  // selecting a day card: highlight on the map and fly to the segment
+  selectDay: key =>
     set(s => ({
       selected: key,
       focusSeg: { key, seq: (s.focusSeg?.seq ?? 0) + 1 },
-      ...(endStopId
-        ? { focusStop: { id: endStopId, seq: (s.focusStop?.seq ?? 0) + 1, pan: false } }
-        : {}),
     })),
 
   focusSegment: key => set(s => ({ focusSeg: { key, seq: (s.focusSeg?.seq ?? 0) + 1 } })),
-  openStop: id => set(s => ({ focusStop: { id, seq: (s.focusStop?.seq ?? 0) + 1, pan: true } })),
+  // zooming to a stop is for choosing where to sleep, so make sure lodging is on the map
+  openStop: id =>
+    set(s => ({
+      focusStop: { id, seq: (s.focusStop?.seq ?? 0) + 1 },
+      showPois: s.showPois.accommodation ? s.showPois : { ...s.showPois, accommodation: true },
+    })),
 
   setLodging: (stopId, poiId) =>
     set(s => ({
@@ -197,11 +221,20 @@ export const usePlanner = create<PlannerState>((set, get) => ({
       ),
     })),
 
+  setLunch: (segKey, poiId) =>
+    set(s => {
+      const lunch = { ...s.lunch };
+      if (poiId) lunch[segKey] = poiId;
+      else delete lunch[segKey];
+      return { lunch };
+    }),
+
   addStop: (fracIdx, poi) => {
     const stop = poi ? makeStopFromPoi(poi) : makeStop(fracIdx, get().imperial);
     set(s => {
       if (s.stops.some(x => x.id === stop.id)) return s;
-      return { stops: [...s.stops, stop].sort(trailOrder(s.reversed)) };
+      const stops = [...s.stops, stop].sort(trailOrder(s.reversed));
+      return { stops, lunch: reconcileLunch(stops, s.lunch) };
     });
   },
 
@@ -220,6 +253,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
         restAt: Object.fromEntries(Object.entries(s.restAt).filter(([k]) => ids.has(k))),
         skipped: new Set([...s.skipped].filter(keyAlive)),
         extras: Object.fromEntries(Object.entries(s.extras).filter(([k]) => keyAlive(k))),
+        lunch: reconcileLunch(stops, s.lunch),
       };
     });
   },
@@ -270,6 +304,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
         extras: Object.fromEntries(
           Object.entries(s.extras).map(([k, v]) => [flip(k), v]),
         ),
+        lunch: Object.fromEntries(Object.entries(s.lunch).map(([k, v]) => [flip(k), v])),
       };
     }),
 
@@ -279,6 +314,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
       restAt: {},
       skipped: new Set(),
       extras: {},
+      lunch: {},
       reversed: false,
       selected: null,
     }),
