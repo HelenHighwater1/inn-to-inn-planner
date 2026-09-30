@@ -215,7 +215,12 @@ function loadInitial(): RouteState & { trek: TrekId } {
   let trek: TrekId;
   if (blob) trek = isTrekId(blob.t) ? blob.t : DEFAULT_TREK;
   else {
-    const last = localStorage.getItem(LS_TREK);
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LS_TREK);
+    } catch {
+      /* blocked storage — fall through to the default trek */
+    }
     trek = isTrekId(last) ? last : DEFAULT_TREK;
     blob = readLsBlob(trek);
   }
@@ -250,6 +255,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
       focusSeg: null,
       focusStop: null,
     });
+    persist(get()); // flush now — a fast reload must not see the old trek in the hash
   },
 
   // selecting a day card: highlight on the map and fly to the segment
@@ -373,18 +379,20 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     }),
 }));
 
+function persist(s: PlannerState) {
+  const blob = serialize(s);
+  try {
+    localStorage.setItem(lsKey(s.trek), JSON.stringify(blob));
+    localStorage.setItem(LS_TREK, s.trek);
+    history.replaceState(null, '', `#i=${b64encode(blob)}`);
+  } catch {
+    /* private mode etc. */
+  }
+}
+
 // persist on every change (debounced)
 let t: ReturnType<typeof setTimeout>;
 usePlanner.subscribe(s => {
   clearTimeout(t);
-  t = setTimeout(() => {
-    const blob = serialize(s);
-    try {
-      localStorage.setItem(lsKey(s.trek), JSON.stringify(blob));
-      localStorage.setItem(LS_TREK, s.trek);
-      history.replaceState(null, '', `#i=${b64encode(blob)}`);
-    } catch {
-      /* private mode etc. */
-    }
-  }, 250);
+  t = setTimeout(() => persist(s), 250);
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { TrailMap } from './components/TrailMap';
 import { ItineraryTable, PrintSheet } from './components/ItineraryTable';
 import { usePlanner } from './store';
@@ -10,6 +10,7 @@ function TrekPicker() {
   const setTrek = usePlanner(s => s.setTrek);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -17,19 +18,38 @@ function TrekPicker() {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
+    // listbox semantics: focus the selected option and drive options with arrow keys
+    const opts = ref.current?.querySelector<HTMLButtonElement>('.trek-opt.on');
+    (opts ?? ref.current?.querySelector<HTMLButtonElement>('.trek-opt'))?.focus();
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);
 
+  const onMenuKeyDown = (e: ReactKeyboardEvent) => {
+    const opts = [...ref.current!.querySelectorAll<HTMLButtonElement>('.trek-opt')];
+    const i = opts.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      opts[(i + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length]?.focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      opts[e.key === 'Home' ? 0 : opts.length - 1]?.focus();
+    }
+  };
+
   return (
     <span className="trek-pick" ref={ref}>
       <button
+        ref={btnRef}
         className="trek-btn"
         onClick={() => setOpen(o => !o)}
         aria-haspopup="listbox"
@@ -51,7 +71,12 @@ function TrekPicker() {
         </svg>
       </button>
       {open && (
-        <span className="trek-menu" role="listbox" aria-label="Scottish Highland treks">
+        <span
+          className="trek-menu"
+          role="listbox"
+          aria-label="Scottish Highland treks"
+          onKeyDown={onMenuKeyDown}
+        >
           {TREK_LIST.map(t => (
             <button
               key={t.id}

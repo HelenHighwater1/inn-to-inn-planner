@@ -21,6 +21,8 @@ const OVERPASS_MIRRORS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 const UA = 'InnToInnPlanner/0.1 (personal hiking planner)';
+// max distance the assembler may bridge between disconnected way components
+const MAX_HOP_KM = 2;
 
 const refetch = process.argv.includes('--refetch');
 mkdirSync(RAW, { recursive: true });
@@ -97,15 +99,18 @@ function assemble(_rel, waysData) {
   while (at !== goal) {
     const next = (adj.get(at) ?? []).find(x => !used.has(x.wayId));
     if (!next) {
-      // dead end — pick up the nearest terminal of an unused component
+      // dead end — pick up the nearest terminal of an unused component, but only
+      // if it is close: a far hop means the relation has an unrelated component,
+      // and bridging it would draw a fictitious walking segment
       const cand = terminals.filter(t => adj.get(t)?.some(x => !used.has(x.wayId)));
       if (!cand.length) { console.warn(`dead end before goal at node ${at}`); break; }
       cand.sort(
         (a, b) => dist(nodePos.get(a), nodePos.get(at)) - dist(nodePos.get(b), nodePos.get(at)),
       );
-      console.warn(
-        `graph gap: hopping ${(dist(nodePos.get(at), nodePos.get(cand[0])) * 1000).toFixed(0)}m to next component`,
-      );
+      const jump = dist(nodePos.get(at), nodePos.get(cand[0]));
+      if (jump > MAX_HOP_KM)
+        throw new Error(`dead end at node ${at}; nearest unused terminal is ${jump.toFixed(1)}km away — refusing to bridge`);
+      console.warn(`graph gap: hopping ${(jump * 1000).toFixed(0)}m to next component`);
       at = cand[0];
       continue;
     }
