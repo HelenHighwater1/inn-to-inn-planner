@@ -116,6 +116,8 @@ describe('ItineraryTable', () => {
     await user.click(screen.getAllByRole('button', { name: /elevation profile/i })[0]);
     const svg = container.querySelector<SVGSVGElement>('.day-elev svg')!;
     const [a, b] = S().stops;
+    fireEvent.keyDown(svg, { key: 'ArrowLeft' }); // already at the minimum — stays at the start
+    expect(S().hoverTrail).toBe(a.trailIdx);
     fireEvent.keyDown(svg, { key: 'ArrowRight' });
     expect(S().hoverTrail).toBeGreaterThan(Math.min(a.trailIdx, b.trailIdx));
     expect(S().hoverTrail).toBeLessThan(Math.max(a.trailIdx, b.trailIdx));

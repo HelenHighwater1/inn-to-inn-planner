@@ -73,7 +73,7 @@ export function ElevationProfile({
     let km: number;
     if (back || fwd) {
       const step = Math.max(totalKm / 40, 0.25);
-      km = (hover?.km ?? (back ? totalKm : 0)) + (back ? -step : step);
+      km = (hover?.km ?? 0) + (back ? -step : step);
     } else if (e.key === 'Home') km = 0;
     else if (e.key === 'End') km = totalKm;
     else return;
