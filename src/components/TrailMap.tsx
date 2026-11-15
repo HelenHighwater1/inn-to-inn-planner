@@ -709,6 +709,8 @@ export function TrailMap() {
   }, [focusStop, ready]);
 
   const chip = (on: boolean) => `map-chip${on ? ' on' : ''}`;
+  const fitTrail = (duration = 700) =>
+    mapRef.current?.fitBounds(trailBounds(), { padding: 50, duration });
 
   return (
     <div className="map-wrap">
@@ -756,18 +758,23 @@ export function TrailMap() {
           </svg>
         </button>
         <div className="map-zoom-sep" />
-        <button aria-label="Reset bearing to north" onClick={() => mapRef.current?.resetNorth()}>
+        <button aria-label="Reset north and tilt" onClick={() => mapRef.current?.resetNorthPitch()}>
           <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
             <polygon points="12 2 19 21 12 17 5 21 12 2" fill="#C47F1E" stroke="#C47F1E" strokeWidth="2" strokeLinejoin="round" />
           </svg>
         </button>
+        <div className="map-zoom-sep" />
+        <button aria-label="Fit whole route" onClick={() => fitTrail()}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+            <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+            <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+        </button>
       </div>
 
-      <button
-        className="map-fit"
-        aria-label="Fit whole route"
-        onClick={() => mapRef.current?.fitBounds(trailBounds(), { padding: 50, duration: 700 })}
-      >
+      <button className="map-fit" aria-label="Fit whole route" onClick={() => fitTrail()}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M8 3H5a2 2 0 0 0-2 2v3" />
           <path d="M16 3h3a2 2 0 0 1 2 2v3" />
