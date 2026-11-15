@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { eleAt, fmtKm, fmtM, profileBetween } from '../lib/trail';
 import { usePlanner } from '../store';
 
@@ -66,6 +66,23 @@ export function ElevationProfile({
     setHover(null);
     setHoverTrail(null);
   };
+  // keyboard tracing: arrows step along the day, Home/End jump to the ends
+  const onKeyDown = (e: KeyboardEvent<SVGSVGElement>) => {
+    const back = e.key === 'ArrowLeft' || e.key === 'ArrowDown';
+    const fwd = e.key === 'ArrowRight' || e.key === 'ArrowUp';
+    let km: number;
+    if (back || fwd) {
+      const step = Math.max(totalKm / 40, 0.25);
+      km = (hover?.km ?? (back ? totalKm : 0)) + (back ? -step : step);
+    } else if (e.key === 'Home') km = 0;
+    else if (e.key === 'End') km = totalKm;
+    else return;
+    e.preventDefault();
+    const c = Math.max(0, Math.min(totalKm, km));
+    const idx = idxAtKm(c);
+    setHover({ km: c, idx });
+    setHoverTrail(idx);
+  };
   // clear the map marker if the chart unmounts while hovered
   useEffect(() => () => setHoverTrail(null), [setHoverTrail]);
 
@@ -78,10 +95,17 @@ export function ElevationProfile({
       </div>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        role="img"
+        role="slider"
+        tabIndex={0}
         aria-label={`Elevation profile: ${fmtKm(totalKm, imperial)}, high point ${fmtM(hi, imperial)}, low point ${fmtM(lo, imperial)}`}
+        aria-valuemin={0}
+        aria-valuemax={totalKm}
+        aria-valuenow={hover?.km ?? 0}
+        aria-valuetext={hover ? `${fmtKm(hover.km, imperial)} · ${fmtM(hoverEle, imperial)}` : ''}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
+        onKeyDown={onKeyDown}
+        onBlur={onLeave}
       >
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">

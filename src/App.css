@@ -827,6 +827,12 @@ aside {
   width: 100%;
   height: auto;
   cursor: crosshair;
+  border-radius: 4px;
+}
+
+.day-elev svg:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }
 
 .elev-read {

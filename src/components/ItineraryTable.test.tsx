@@ -110,6 +110,21 @@ describe('ItineraryTable', () => {
     expect(container.querySelector('.elev-dot')).toBeNull();
   });
 
+  it('lets keyboard users trace the profile with arrow keys', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ItineraryTable />);
+    await user.click(screen.getAllByRole('button', { name: /elevation profile/i })[0]);
+    const svg = container.querySelector<SVGSVGElement>('.day-elev svg')!;
+    const [a, b] = S().stops;
+    fireEvent.keyDown(svg, { key: 'ArrowRight' });
+    expect(S().hoverTrail).toBeGreaterThan(Math.min(a.trailIdx, b.trailIdx));
+    expect(S().hoverTrail).toBeLessThan(Math.max(a.trailIdx, b.trailIdx));
+    expect(container.querySelector('.elev-dot')).not.toBeNull();
+    fireEvent.blur(svg);
+    expect(S().hoverTrail).toBeNull();
+    expect(container.querySelector('.elev-dot')).toBeNull();
+  });
+
   it('clears the trail hover marker when the chart closes', async () => {
     const user = userEvent.setup();
     const { container } = render(<ItineraryTable />);
