@@ -32,6 +32,7 @@ interface PlannerState {
   focusStop: { id: string; seq: number } | null; // zoom to a stop
   showPois: { accommodation: boolean; food: boolean; town: boolean; distillery: boolean };
   hoverPois: string[] | null; // poi ids to highlight on the map (e.g. lunch hover)
+  hoverTrail: number | null; // trail index hovered in a day's elevation chart
   setTrek: (id: TrekId) => void;
   selectDay: (key: string) => void;
   focusSegment: (key: string) => void;
@@ -49,6 +50,7 @@ interface PlannerState {
   toggleUnits: () => void;
   setImperial: (v: boolean) => void;
   setHoverPois: (ids: string[] | null) => void;
+  setHoverTrail: (idx: number | null) => void;
   reset: () => void;
 }
 
@@ -237,6 +239,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   focusStop: null,
   showPois: { accommodation: true, food: true, town: false, distillery: false },
   hoverPois: null,
+  hoverTrail: null,
 
   // switch treks: flush the outgoing plan to its own key, then load the new trek's
   setTrek: id => {
@@ -349,6 +352,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   toggleUnits: () => set(s => ({ imperial: !s.imperial })),
   setImperial: v => set(s => (s.imperial === v ? s : { imperial: v })),
   setHoverPois: ids => set({ hoverPois: ids }),
+  setHoverTrail: idx => set({ hoverTrail: idx }),
 
   // reverse the whole trip: stops reorder, seg-keyed state gets key-flipped
   toggleDirection: () =>

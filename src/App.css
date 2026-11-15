@@ -780,6 +780,96 @@ aside {
   font-weight: 600;
 }
 
+/* meta row pulled out of the .day-main button — align under the body, keep the old 5px rhythm */
+.day-card > .day-meta {
+  padding-left: 50px;
+  margin-top: -5px;
+}
+
+.day-meta .elev {
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.day-meta .elev:hover,
+.day-meta .elev.open {
+  background: var(--moss-tint);
+  color: var(--forest);
+}
+
+.elev-caret {
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.elev.open .elev-caret {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.day-elev {
+  position: relative;
+  margin-left: 50px;
+  padding: 10px 12px 6px;
+  border: 1px solid var(--line-card);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.day-elev svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+
+.elev-read {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--forest);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.day-elev .elev-line {
+  stroke: var(--forest);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.day-elev .elev-axis {
+  stroke: var(--line-btn);
+  stroke-width: 1;
+}
+
+.day-elev .elev-lbl {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.day-elev .elev-cross {
+  stroke: var(--amber);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+}
+
+.day-elev .elev-dot {
+  fill: var(--amber);
+  stroke: #fffdf8;
+  stroke-width: 1.6;
+}
+
 .tag {
   padding: 2px 8px;
   border-radius: 999px;

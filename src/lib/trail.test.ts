@@ -5,6 +5,7 @@ import {
   distilleriesNear,
   distilleryPois,
   climbBetween,
+  eleAt,
   findCandidateByName,
   fmtDistM,
   fmtKm,
@@ -14,6 +15,7 @@ import {
   nearestOnTrail,
   POIS,
   positionAt,
+  profileBetween,
   snapCandidate,
   snapCandidatePreferTown,
   TRAIL,
@@ -125,6 +127,49 @@ describe('climbBetween', () => {
     const start = TRAIL.findIndex((_, i) => i >= 1 && i <= TRAIL.length - 6 && isDesc(i));
     expect(start).toBeGreaterThan(0);
     expect(climbBetween(start, start + 5).gainM).toBe(0);
+  });
+});
+
+describe('eleAt', () => {
+  it('returns the exact elevation at integer indices', () => {
+    expect(eleAt(42)).toBe(TRAIL[42].ele);
+  });
+
+  it('interpolates between neighbouring points', () => {
+    expect(eleAt(42.5)).toBeCloseTo((TRAIL[42].ele + TRAIL[43].ele) / 2, 10);
+  });
+});
+
+describe('profileBetween', () => {
+  it('walks from 0 km to the segment distance with monotonic km', () => {
+    const pts = profileBetween(100, 200);
+    expect(pts[0].km).toBe(0);
+    expect(pts[pts.length - 1].km).toBeCloseTo(kmAt(200) - kmAt(100), 10);
+    for (let i = 1; i < pts.length; i++) expect(pts[i].km).toBeGreaterThanOrEqual(pts[i - 1].km);
+  });
+
+  it('carries the trail index so points map back onto the trail', () => {
+    const pts = profileBetween(100, 200);
+    expect(pts[0].idx).toBe(100);
+    expect(pts[pts.length - 1].idx).toBe(200);
+    for (let i = 1; i < pts.length; i++) expect(pts[i].idx).toBeGreaterThanOrEqual(pts[i - 1].idx);
+  });
+
+  it('runs in walking order when the direction reverses', () => {
+    const fwd = profileBetween(100, 200);
+    const rev = profileBetween(200, 100);
+    expect(rev[0].km).toBe(0);
+    expect(rev[0].idx).toBe(200);
+    expect(rev[rev.length - 1].idx).toBe(100);
+    expect(rev.map(p => p.ele)).toEqual(fwd.map(p => p.ele).reverse());
+    for (let i = 1; i < rev.length; i++) expect(rev[i].km).toBeGreaterThanOrEqual(rev[i - 1].km);
+  });
+
+  it('handles a segment shorter than one trail interval', () => {
+    const pts = profileBetween(100.2, 100.7);
+    expect(pts).toHaveLength(2);
+    expect(pts[0].ele).toBeCloseTo(eleAt(100.2), 10);
+    expect(pts[1].ele).toBeCloseTo(eleAt(100.7), 10);
   });
 });
 
