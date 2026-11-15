@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ItineraryTable, PrintSheet } from './ItineraryTable';
@@ -56,6 +56,95 @@ describe('ItineraryTable', () => {
     const [a, b] = S().stops;
     await user.click(screen.getAllByRole('button', { name: /Buckie/ })[0]);
     expect(S().selected).toBe(`${a.id}>${b.id}`);
+  });
+
+  it('expands an elevation profile when the climbing meta is clicked', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ItineraryTable />);
+    const btn = screen.getAllByRole('button', { name: /elevation profile/i })[0];
+    expect(container.querySelector('.day-elev')).toBeNull();
+    await user.click(btn);
+    expect(container.querySelector('.day-elev svg')).not.toBeNull();
+    expect(btn).toHaveAttribute('aria-expanded', 'true');
+    expect(S().selected).toBeNull(); // toggling the chart doesn't select the day
+    await user.click(btn);
+    expect(container.querySelector('.day-elev')).toBeNull();
+  });
+
+  it('shows only one elevation profile at a time', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ItineraryTable />);
+    const btns = screen.getAllByRole('button', { name: /elevation profile/i });
+    await user.click(btns[0]);
+    await user.click(btns[1]);
+    expect(container.querySelectorAll('.day-elev')).toHaveLength(1);
+    expect(btns[0]).toHaveAttribute('aria-expanded', 'false');
+    expect(btns[1]).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('reports the hovered trail position while tracing the chart', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ItineraryTable />);
+    await user.click(screen.getAllByRole('button', { name: /elevation profile/i })[0]);
+    const svg = container.querySelector<SVGSVGElement>('.day-elev svg')!;
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 360,
+      height: 92,
+      right: 360,
+      bottom: 92,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    const [a, b] = S().stops;
+    fireEvent.mouseMove(svg, { clientX: 180 });
+    const lo = Math.min(a.trailIdx, b.trailIdx);
+    const hi = Math.max(a.trailIdx, b.trailIdx);
+    expect(S().hoverTrail).toBeGreaterThan(lo);
+    expect(S().hoverTrail).toBeLessThan(hi);
+    expect(container.querySelector('.elev-dot')).not.toBeNull();
+    fireEvent.mouseLeave(svg);
+    expect(S().hoverTrail).toBeNull();
+    expect(container.querySelector('.elev-dot')).toBeNull();
+  });
+
+  it('lets keyboard users trace the profile with arrow keys', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ItineraryTable />);
+    await user.click(screen.getAllByRole('button', { name: /elevation profile/i })[0]);
+    const svg = container.querySelector<SVGSVGElement>('.day-elev svg')!;
+    const [a, b] = S().stops;
+    fireEvent.keyDown(svg, { key: 'ArrowLeft' }); // already at the minimum — stays at the start
+    expect(S().hoverTrail).toBe(a.trailIdx);
+    fireEvent.keyDown(svg, { key: 'ArrowRight' });
+    expect(S().hoverTrail).toBeGreaterThan(Math.min(a.trailIdx, b.trailIdx));
+    expect(S().hoverTrail).toBeLessThan(Math.max(a.trailIdx, b.trailIdx));
+    expect(container.querySelector('.elev-dot')).not.toBeNull();
+    fireEvent.blur(svg);
+    expect(S().hoverTrail).toBeNull();
+    expect(container.querySelector('.elev-dot')).toBeNull();
+  });
+
+  it('clears the trail hover marker when the chart closes', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<ItineraryTable />);
+    const btn = screen.getAllByRole('button', { name: /elevation profile/i })[0];
+    await user.click(btn);
+    const svg = container.querySelector<SVGSVGElement>('.day-elev svg')!;
+    fireEvent.mouseMove(svg, { clientX: 100 });
+    expect(S().hoverTrail).not.toBeNull();
+    await user.click(btn); // collapse while still "hovering" — unmount clears the marker
+    expect(S().hoverTrail).toBeNull();
+  });
+
+  it('does not offer an elevation profile on taxi days', () => {
+    const [a, b] = S().stops;
+    act(() => S().toggleSkip(`${a.id}>${b.id}`));
+    const { container } = render(<ItineraryTable />);
+    const cab = container.querySelector('.day-card.cab')!;
+    expect(cab.querySelector('button.elev')).toBeNull();
   });
 
   it('adds a free-text extra and removes it', async () => {

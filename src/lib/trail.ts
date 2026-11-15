@@ -124,6 +124,30 @@ export function climbBetween(fromIdx: number, toIdx: number): { gainM: number; l
   return fromIdx <= toIdx ? { gainM: up, lossM: down } : { gainM: down, lossM: up };
 }
 
+/** Interpolated elevation (m) at a fractional trail index. */
+export function eleAt(fracIdx: number): number {
+  const i = Math.max(0, Math.min(TRAIL.length - 2, Math.floor(fracIdx)));
+  const t = fracIdx - i;
+  return TRAIL[i].ele + (TRAIL[i + 1].ele - TRAIL[i].ele) * t;
+}
+
+/** Elevation profile walking fromIdx → toIdx: { km: distance from the day's start, ele, idx } points. */
+export function profileBetween(
+  fromIdx: number,
+  toIdx: number,
+): { km: number; ele: number; idx: number }[] {
+  const km0 = kmAt(fromIdx);
+  const mid: { km: number; ele: number; idx: number }[] = [];
+  for (let i = Math.ceil(Math.min(fromIdx, toIdx)); i <= Math.floor(Math.max(fromIdx, toIdx)); i++)
+    mid.push({ km: Math.abs(kmAt(i) - km0), ele: TRAIL[i].ele, idx: i });
+  if (fromIdx > toIdx) mid.reverse();
+  return [
+    { km: 0, ele: eleAt(fromIdx), idx: fromIdx },
+    ...mid,
+    { km: Math.abs(kmAt(toIdx) - km0), ele: eleAt(toIdx), idx: toIdx },
+  ];
+}
+
 
 
 /** Nearest candidate stop to a trail position, within maxKm along-trail. */

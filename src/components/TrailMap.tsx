@@ -129,6 +129,7 @@ export function TrailMap() {
   const focusStop = usePlanner(s => s.focusStop);
   const togglePoi = usePlanner(s => s.togglePoi);
   const hoverPois = usePlanner(s => s.hoverPois);
+  const hoverTrail = usePlanner(s => s.hoverTrail);
 
   function showPoiPopup(map: MLMap, poi: Poi) {
     const el = document.createElement('div');
@@ -291,6 +292,7 @@ export function TrailMap() {
       map.addSource('pois', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('poi-chosen', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('poi-highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addSource('trail-hover', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addSource('stops', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
       if (!map.hasImage('food-diamond')) map.addImage('food-diamond', makeDiamond(), { pixelRatio: 2 });
@@ -443,6 +445,18 @@ export function TrailMap() {
           'circle-color': 'rgba(0,0,0,0)',
           'circle-stroke-color': AMBER,
           'circle-stroke-width': 3,
+        },
+      });
+      // dot tracking the point hovered in a day's elevation chart
+      map.addLayer({
+        id: 'trail-hover',
+        type: 'circle',
+        source: 'trail-hover',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': AMBER,
+          'circle-stroke-color': PIN_FILL,
+          'circle-stroke-width': 2.5,
         },
       });
 
@@ -631,6 +645,29 @@ export function TrailMap() {
       }),
     });
   }, [hoverPois, ready]);
+
+  // dot on the trail at the point hovered in a day's elevation chart
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const features =
+      hoverTrail === null
+        ? []
+        : [
+            {
+              type: 'Feature' as const,
+              properties: {},
+              geometry: {
+                type: 'Point' as const,
+                coordinates: (() => {
+                  const p = positionAt(hoverTrail);
+                  return [p.lon, p.lat];
+                })(),
+              },
+            },
+          ];
+    (map.getSource('trail-hover') as GeoJSONSource)?.setData({ type: 'FeatureCollection', features });
+  }, [hoverTrail, ready]);
 
   // fly to a segment when a day is selected / "show on map" is pressed
   useEffect(() => {

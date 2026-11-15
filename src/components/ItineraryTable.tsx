@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePlanner } from '../store';
 import { deriveDays } from '../lib/itinerary';
 import { PrintMap } from './PrintMap';
+import { ElevationProfile } from './ElevationProfile';
 import { distilleriesNear, distilleryPois, fmtKm, fmtM, lunchPois, POIS, type Poi } from '../lib/trail';
 import { TREKS } from '../lib/treks';
 
@@ -46,6 +47,11 @@ const ICONS = {
       <path d="m6 6 12 12" />
     </svg>
   ),
+  chevron: (
+    <svg className="elev-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  ),
 };
 
 export function ItineraryTable() {
@@ -60,6 +66,7 @@ export function ItineraryTable() {
   const trek = usePlanner(s => s.trek);
   const meta = TREKS[trek];
   const [adding, setAdding] = useState<string | null>(null);
+  const [profileFor, setProfileFor] = useState<string | null>(null);
   const {
     selectDay,
     focusSegment,
@@ -293,40 +300,58 @@ export function ItineraryTable() {
                       <span className="day-unit">{distUnit}</span>
                     </div>
                   </div>
-                  <div className="day-meta">
-                    <span className="meta">
-                      {ICONS.mountain}
-                      {isCab ? '—' : `↑${gain(seg.gainM)} ↓${gain(seg.lossM)}`}
-                    </span>
-                    {isCab ? (
-                      <span className="meta lunch">{ICONS.utensils}By taxi</span>
-                    ) : lunch.length > 0 ? (
-                      <span
-                        className="meta lunch"
-                        title={lunch.map(p => p.name ?? p.subtype.replaceAll('_', ' ')).join(', ')}
-                        onMouseEnter={() => setHoverPois(lunch.map(p => p.id))}
-                        onMouseLeave={() => setHoverPois(null)}
-                      >
-                        {ICONS.utensils}
-                        {lunch.length} lunch stop{lunch.length > 1 ? 's' : ''}
-                      </span>
-                    ) : (
-                      <span className="meta lunch none">{ICONS.utensils}Pack a lunch</span>
-                    )}
-                    {lodge?.detour && (
-                      <span className="meta" title="Walking distance from the trail to tonight's lodging">
-                        {ICONS.bed}
-                        {fmtKm(lodge.detour.distM / 1000, imperial)} each way off trail
-                      </span>
-                    )}
-                    {tags.map(t => (
-                      <span key={t} className="tag">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </button>
+              <div className="day-meta">
+                {isCab ? (
+                  <span className="meta">{ICONS.mountain}—</span>
+                ) : (
+                  <button
+                    type="button"
+                    className={`meta elev${profileFor === seg.key ? ' open' : ''}`}
+                    aria-expanded={profileFor === seg.key}
+                    aria-label={`Elevation profile for day ${n}: up ${gain(seg.gainM)}, down ${gain(seg.lossM)}`}
+                    title="Show elevation profile"
+                    onClick={() => setProfileFor(profileFor === seg.key ? null : seg.key)}
+                  >
+                    {ICONS.mountain}↑{gain(seg.gainM)} ↓{gain(seg.lossM)}
+                    {ICONS.chevron}
+                  </button>
+                )}
+                {isCab ? (
+                  <span className="meta lunch">{ICONS.utensils}By taxi</span>
+                ) : lunch.length > 0 ? (
+                  <span
+                    className="meta lunch"
+                    title={lunch.map(p => p.name ?? p.subtype.replaceAll('_', ' ')).join(', ')}
+                    onMouseEnter={() => setHoverPois(lunch.map(p => p.id))}
+                    onMouseLeave={() => setHoverPois(null)}
+                  >
+                    {ICONS.utensils}
+                    {lunch.length} lunch stop{lunch.length > 1 ? 's' : ''}
+                  </span>
+                ) : (
+                  <span className="meta lunch none">{ICONS.utensils}Pack a lunch</span>
+                )}
+                {lodge?.detour && (
+                  <span className="meta" title="Walking distance from the trail to tonight's lodging">
+                    {ICONS.bed}
+                    {fmtKm(lodge.detour.distM / 1000, imperial)} each way off trail
+                  </span>
+                )}
+                {tags.map(t => (
+                  <span key={t} className="tag">
+                    {t}
+                  </span>
+                ))}
+              </div>
+              {profileFor === seg.key && !isCab && (
+                <ElevationProfile
+                  fromIdx={seg.from.trailIdx}
+                  toIdx={seg.to.trailIdx}
+                  imperial={imperial}
+                />
+              )}
               {extrasBlock(seg.key, dists, lunchPoi)}
               <div className="day-actions">
                 <button
